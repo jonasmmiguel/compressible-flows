@@ -18,10 +18,38 @@ m_mol_co = 32E-03           # [kg/mol]
 Rco = Runiv / m_mol_co      # [J/kg.K]
 
 
+def isentropic(output_type, **input):
+
+    if input['k']:
+        k = input['k']
+    else:
+        k = 1.4
+
+    if output_type == 'M' and input['A_ratio']:
+        f = lambda M, k: isentropic('A', M=M, k=k) - input['A_ratio']
+        Msub = fsolve(f, x0=0.1, args=(k))
+        Msup = fsolve(f, x0=5, args=(k))
+
+        if input['regime'] == 'subsonic':
+            return Msub
+        elif input['regime'] == 'supersonic':
+            return Msup
+    elif input['M']:
+        M = input['M']
+        if output_type == 'T':
+            return 1 / (1 + 0.5 * (k - 1) * M ** 2)
+        elif output_type == 'p':
+            return isentropic('T', M=M, k=k) ** ( k / (k-1))
+        elif output_type == 'A':
+            return (1 / M) * ((1 + (0.5 * (k - 1)) * M ** 2) / (0.5 * (k + 1))) ** (
+                        0.5 * (k + 1) / (k - 1))  # Zucker p. 130, eq 5.37
+    else:
+        return NotImplementedError('No implementation for input ({}), output ({}) configuration given: .'.format(input, output_type))
+
+
 def c(T, k=1.4, R=Rair):
     return (k*R*T)**(1/2)
 # print( area_ratio(M=0.6476, k=1.4) )
-
 
 def psi_T(M, k=1.4):  # T_ratio = T/Tt
     return 1/( 1 + 0.5*(k-1)*M**2 )
@@ -146,34 +174,7 @@ def p1tilde(p1):
     return p1tilde
 
 
-if __name__=="__main__":
-    # # Q2 P1
-    # R = Rair
-    # k = 1.4
-    #
-    # mdot = 13.5
-    # T1 = 1033
-    # u1 = 90
-    # pamb = 1E+05
-    # p2 = pamb
-    # M2 = 1
-    #
-    # cp = (k/(k-1))*R
-    # Tt = T1 + u1**2/(2*cp)
-    #
-    # T2 = Tt*psi_T(M2)
-    #
-    # c2 = (k*R*T2)**0.5
-    # u2 = c2
-    #
-    # A2 = mdot/((p2/(R*T2))*u2)
-    # F = p2*A2
-    # p2tilde = 8266/A2
-    #
-    # F = (p2tilde+0.5*(p2tilde/(R*T2))*u2**2)*A2
-
-    # A3Q1
-    L1_to_L1max = 8.48341 * 0.0127 / (0.024*0.6096)
+if __name__ == '__main__':
     print('done')
 
 
