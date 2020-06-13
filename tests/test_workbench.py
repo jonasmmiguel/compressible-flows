@@ -14,6 +14,8 @@ def eps(x, xref):
     """
     if xref == 0:
         ValueError('xref cannot be zero')
+    elif x is None:
+        ValueError('x is not defined')
     else:
         return abs(x-xref)
 
@@ -26,6 +28,16 @@ def eps(x, xref):
                         ])
 def test_eps(x, xref, result):
     assert eps(x, xref) == result
+
+
+@pytest.mark.parametrize('input, output',
+                        [
+                            ({'k': 1.4}, 1.4),
+                            ({'M': 3}, 1.4),
+                            ({'k': 1.1}, 1.1),
+                        ])
+def test_get_k(input, output):
+    assert workbench.get_k(input) == output
 
 
 @pytest.mark.parametrize('k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu',
@@ -50,9 +62,9 @@ def test_isentropic(k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu):
                              (1.4, 3.00, 0.47519, 10.33333, 2.67901, 2.22222, 0.32834, 12.06096),
                          ])
 def test_nshock(k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1):
-    assert eps( workbench.nshock('M', Ms, k), Msl ) < EPS
-    assert eps( workbench.nshock('p', Ms, k), p_ratio ) < EPS
-    assert eps( workbench.nshock('pt', Ms, k), pt_ratio ) < EPS
+    assert eps( workbench.nshock('M', Ms=Ms, k=k), Msl ) < EPS
+    assert eps( workbench.nshock('p', Ms=Ms, k=k), p_ratio ) < EPS
+    assert eps( workbench.nshock('pt', Ms=Ms, k=k), pt_ratio ) < EPS
 
 
 @pytest.mark.parametrize('k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R',

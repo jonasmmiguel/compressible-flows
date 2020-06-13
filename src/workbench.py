@@ -18,102 +18,71 @@ m_mol_co = 32E-03           # [kg/mol]
 Rco = Runiv / m_mol_co      # [J/kg.K]
 
 
-def isentropic(output_type, **input):
-
-    if input['k']:
-        k = input['k']
+def get_k(input):
+    try:
+        return input['k']
+    except KeyError:
+        return 1.4
     else:
-        k = 1.4
+        ValueError('k is undefined')
 
-    if output_type == 'M' and input['A_ratio']:
-        f = lambda M, k: isentropic('A', M=M, k=k) - input['A_ratio']
-        Msub = fsolve(f, x0=0.1, args=(k))
-        Msup = fsolve(f, x0=5, args=(k))
 
-        if input['regime'] == 'subsonic':
-            return Msub
-        elif input['regime'] == 'supersonic':
-            return Msup
-    elif input['M']:
+def isentropic(output_type, **input):
+    k = get_k(input)
+
+    try:
         M = input['M']
         if output_type == 'T':
             return 1 / (1 + 0.5 * (k - 1) * M ** 2)
+
         elif output_type == 'p':
             return isentropic('T', M=M, k=k) ** ( k / (k-1))
+
         elif output_type == 'A':
             return (1 / M) * ((1 + (0.5 * (k - 1)) * M ** 2) / (0.5 * (k + 1))) ** (
-                        0.5 * (k + 1) / (k - 1))  # Zucker p. 130, eq 5.37
+                    0.5 * (k + 1) / (k - 1))  # Zucker p. 130, eq 5.37
+
+    except KeyError:
+        if input['A_ratio'] and output_type == 'M' :
+            f = lambda M, k: isentropic('A', M=M, k=k) - input['A_ratio']
+            Msub = fsolve(f, x0=0.1, args=(k))
+            Msup = fsolve(f, x0=5, args=(k))
+
+            if input['regime'] == 'subsonic':
+                return Msub
+            elif input['regime'] == 'supersonic':
+                return Msup
     else:
-        return NotImplementedError('No implementation for input ({}), output ({}) configuration given: .'.format(input, output_type))
+        return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
+
+
+def nshock(output_type, **input):
+    k = get_k(input)
+
+    try:
+        Ms = input['Ms']
+        if output_type == 'M':
+            term1 = Ms ** 2 + 2 / (k - 1)
+            term2 = (2 * k / (k - 1)) * Ms ** 2 - 1
+            return (term1 / term2) ** (1 / 2)
+
+        elif output_type == 'pt':
+            term1a = ((k + 1) / 2) * Ms ** 2
+            term1b = 1 + ((k - 1) / 2) * Ms ** 2
+            term3 = (2 * k / (k + 1)) * Ms ** 2 - ((k - 1) / (k + 1))
+            return (term1a / term1b) ** (k / (k - 1)) * term3 ** (1 / (1 - k))
+
+        elif output_type == 'p':
+            Msl = nshock('M', Ms=Ms)
+            return (1 + k*Ms**2)/(1 + k*Msl**2)
+    except KeyError:
+        return None
+    else:
+        return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
 
 def c(T, k=1.4, R=Rair):
     return (k*R*T)**(1/2)
-# print( area_ratio(M=0.6476, k=1.4) )
-
-def psi_T(M, k=1.4):  # T_ratio = T/Tt
-    return 1/( 1 + 0.5*(k-1)*M**2 )
-
-
-def psi_T_inv(T_ratio, k=1.4):
-    """
-    Determine the (unambiguous) solution for Mach Number, given T/Tt, gamma.
-
-    Usage example: M_from_T_ratio(T_ratio=0.99356) -> 0.18
-
-    :param k: gamma
-    :param T_ratio: T/Tt
-    :return:
-    """
-    return (( -1+1/T_ratio )*2/(k-1))**0.5
-
-
-def psi_p(M, k=1.4):  # p_ratio = p/pt
-    return psi_T(M, k) ** ((k-1) / k)
-
-
-def psi_p_inv(p_ratio, k=1.4):
-    """
-    Determine the (unambiguous) solution for Mach Number, given p/pt, gamma.
-
-    Usage example: # TODO
-
-    :param k: gamma
-    :param T_ratio: T/Tt
-    :return:
-    """
-    T_ratio = p_ratio**( (k-1)/k )
-    return psi_T_inv(T_ratio, k)
-
-
-def psi_A(M, k=1.4):  # A/A*
-    """
-    Determine A/A* for a given M, gamma.
-
-    :param M:
-    :param k:
-    :return:
-    """
-    return (1/M)*( (1 + (0.5*(k-1))*M**2) /( 0.5*(k+1) ))**( 0.5*(k+1)/(k-1) )   # Zucker p. 130, eq 5.37
-# print( M_from_area_ratio(k=1.4, area_ratio=1.13790) )
-
-
-def psi_A_inv(area_ratio, k, regime):
-    """
-    Determine sub- and supersonic solutions for Mach Number, given A/A*, gamma.
-
-    Usage example: M_from_area_ratio(k=1.4, area_ratio=1.1379) -> [0.64755967 1.43999497]
-
-    :param k: gamma
-    :param area_ratio: A/A*
-    :return:
-    """
-    f = lambda M, k: psi_A(M, k) - area_ratio
-    [Msub, Msuper] = fsolve(f, x0=[0.1, 10], args=(k))
-    if regime == 'subsonic':
-        return Msub
-    else:
-        return Msuper
 
 
 def psi_pA(M, k=1.4):  # pA/(pt A*)
