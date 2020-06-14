@@ -40,18 +40,21 @@ def isentropic(output_type, **input):
 
         elif output_type == 'A':
             return (1 / M) * ((1 + (0.5 * (k - 1)) * M ** 2) / (0.5 * (k + 1))) ** (
-                    0.5 * (k + 1) / (k - 1))  # Zucker p. 130, eq 5.37
+                    0.5 * (k + 1) / (k - 1))
 
     except KeyError:
-        if input['A_ratio'] and output_type == 'M' :
-            f = lambda M, k: isentropic('A', M=M, k=k) - input['A_ratio']
-            Msub = fsolve(f, x0=0.1, args=(k))
-            Msup = fsolve(f, x0=5, args=(k))
+        if input['A_ratio'] and output_type == 'M':
+            loss = lambda M, k: (isentropic('A', M=M, k=k) - input['A_ratio'])**2       # squared error
 
             if input['regime'] == 'subsonic':
-                return Msub
+                M_range = [(0, 1)]
+                M_initial_guess = 0.3
             elif input['regime'] == 'supersonic':
-                return Msup
+                M_range = [(1, 10)]
+                M_initial_guess = 1.6
+
+            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k, options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
+            return M
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
@@ -113,8 +116,7 @@ def fanno(output_type, **input):
                 M_range = [(1, 10)]
                 M_initial_guess = 1.6
 
-            M_all_runs = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k, options={'maxiter': 100, 'ftol': 1e-8})['x']
-            M = np.median(M_all_runs)
+            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k, options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
             return M
 
     else:
