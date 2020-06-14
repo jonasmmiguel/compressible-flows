@@ -1,34 +1,9 @@
-import src.workbench as workbench
+import src.workbench as wb
 import pytest
+from pytest import approx
 from numpy import nan
 
-EPS = 1E-03
-
-
-def eps(x, xref):
-    """
-    Calculate absolute deviation.
-    :param x: value
-    :param xref: ground truth
-    :return: |x - xref|
-    """
-    if xref == 0:
-        ValueError('xref cannot be zero')
-    elif x is None:
-        ValueError('x is not defined')
-    else:
-        return abs(x-xref)
-
-
-@pytest.mark.parametrize('x, xref, result',
-                        [
-                            (3, 2, 3-2),
-                            (5, 10, 10-5),
-                            (1.9995, 2.0000, 2.0000-1.9995),
-                        ])
-def test_eps(x, xref, result):
-    assert eps(x, xref) == result
-
+EPS = 1E-05
 
 @pytest.mark.parametrize('input, output',
                         [
@@ -37,7 +12,7 @@ def test_eps(x, xref, result):
                             ({'k': 1.1}, 1.1),
                         ])
 def test_get_k(input, output):
-    assert workbench.get_k(input) == output
+    assert wb.get_k(input) == output
 
 
 @pytest.mark.parametrize('k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu',
@@ -46,13 +21,14 @@ def test_get_k(input, output):
                              (1.4, 2.00, 0.12780, 0.55556, 1.68750, 0.21567, 26.37976, 30.0000)
                          ])
 def test_isentropic(k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu):
-    assert eps( workbench.isentropic('T', k=k, M=M), T_ratio ) < EPS
-    assert eps( workbench.isentropic('p', k=k, M=M), p_ratio ) < EPS
-    assert eps( workbench.isentropic('A', k=k, M=M), A_ratio ) < EPS
+    assert wb.isentropic('T', k=k, M=M) == approx(T_ratio, abs=EPS)
+    assert wb.isentropic('p', k=k, M=M) == approx(p_ratio, abs=EPS)
+    assert wb.isentropic('A', k=k, M=M) == approx(A_ratio, abs=EPS)
+
     if M < 1:
-        assert eps( workbench.isentropic('M', k=k, A_ratio=A_ratio, regime='subsonic'), M) < EPS
+        assert wb.isentropic('M', k=k, A_ratio=A_ratio, regime='subsonic') == approx(M, abs=EPS)
     elif M > 1:
-        assert eps( workbench.isentropic('M', k=k, A_ratio=A_ratio, regime='supersonic'), M) < EPS
+        assert wb.isentropic('M', k=k, A_ratio=A_ratio, regime='supersonic') == approx(M, abs=EPS)
 
 
 @pytest.mark.parametrize('k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1',
@@ -62,23 +38,29 @@ def test_isentropic(k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu):
                              (1.4, 3.00, 0.47519, 10.33333, 2.67901, 2.22222, 0.32834, 12.06096),
                          ])
 def test_nshock(k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1):
-    assert eps( workbench.nshock('M', Ms=Ms, k=k), Msl ) < EPS
-    assert eps( workbench.nshock('p', Ms=Ms, k=k), p_ratio ) < EPS
-    assert eps( workbench.nshock('pt', Ms=Ms, k=k), pt_ratio ) < EPS
+    assert wb.nshock('M', Ms=Ms, k=k) == approx(Msl, abs=EPS)
+    assert wb.nshock('p', Ms=Ms, k=k) == approx(p_ratio, abs=EPS)
+    assert wb.nshock('pt', Ms=Ms, k=k) == approx(pt_ratio, abs=EPS)
 
 
 @pytest.mark.parametrize('k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R',
                          [
+                             (1.4, 0.20, 1.19048, 5.45545, 2.96352, 0.21822, 14.53327, 1.08638),
+                             (1.4, 0.25, 1.18519, 4.35465, 2.40271, 0.27217, 8.48341, 0.87660),
                              (1.4, 0.50, 1.14286, 2.13809, 1.33984, 0.53452, 1.06906, 0.29255),
                              (1.4, 0.75, 1.07865, 1.38478, 1.06242, 0.77894, 0.12728, 0.06055),
+                             (1.4, 1.20, 0.93168, 0.80436, 1.03044, 1.15828, 0.03364, 0.02999),
+                             (1.4, 1.80, 0.72816, 0.47407, 1.43898, 1.53598, 0.24189, 0.36394),
                              (1.4, 2.00, 0.66667, 0.40825, 1.68750, 1.63299, 0.30500, 0.52325),
                              (1.4, 3.00, 0.42857, 0.21822, 4.23457, 1.96396, 0.52216, 1.44328),
                          ])
 def test_fanno(k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R):
-    assert eps( workbench.fanno('T', M, k), T_ratio ) < EPS
-    assert eps( workbench.fanno('p', M, k), p_ratio ) < EPS
-    assert eps( workbench.fanno('pt', M, k), pt_ratio ) < EPS
-    assert eps( workbench.fanno('fld', M, k), fLmax_to_D ) < EPS
-    assert eps( workbench.fanno('fld', fLmax_to_D, k, inv=True), M ) < EPS
-
+    assert wb.fanno('T', M=M, k=k) == approx(T_ratio, abs=EPS)
+    assert wb.fanno('p', M=M, k=k) == approx(p_ratio, abs=EPS)
+    assert wb.fanno('pt', M=M, k=k) == approx(pt_ratio, abs=EPS)
+    assert wb.fanno('fld', M=M, k=k) == approx(fLmax_to_D, abs=EPS)
+    if M < 1:
+        assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='subsonic') == approx(M, abs=EPS)
+    elif M > 1:
+        assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='supersonic') == approx(M, abs=EPS*2)
 
