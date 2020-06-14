@@ -3,20 +3,6 @@
 import numpy as np
 from scipy.optimize import minimize_scalar, minimize, fsolve, brentq
 
-Runiv = 8.3145              # [J/mol.K]
-
-m_mol_air = 28.9645E-03     # [kg/mol]
-Rair = Runiv / m_mol_air    # [J/kg.K] gas constant for atmospheric air
-
-m_mol_n2 = 28E-03           # [kg/mol]
-Rn2 = Runiv / m_mol_n2      # [J/kg.K]
-
-m_mol_co2 = 48E-03          # [kg/mol]
-Rco2 = Runiv / m_mol_co2    # [J/kg.K]
-
-m_mol_co = 32E-03           # [kg/mol]
-Rco = Runiv / m_mol_co      # [J/kg.K]
-
 
 def get_k(input):
     try:
@@ -87,6 +73,7 @@ def nshock(output_type, **input):
 
 def fanno(output_type, **input):
     k = get_k(input)
+
     try:
         M = input['M']
         if output_type == 'T':
@@ -95,6 +82,7 @@ def fanno(output_type, **input):
         elif output_type == 'p':
             T_ratio = fanno('T', M=M, k=k)
             return (1/M)*T_ratio**0.5
+
         elif output_type == 'pt':
             T_ratio = fanno('T', M=M, k=k)
             return (1/M)*T_ratio**( -(k+1)/(2*(k-1)))
