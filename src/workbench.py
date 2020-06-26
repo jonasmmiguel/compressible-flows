@@ -124,6 +124,7 @@ def fanno(output_type, **input):
 
 
 def find_minimum(loss, input, k):
+
     if input['regime'] == 'subsonic':
         M_range = [(0, 0.9999)]
         M_initial_guess = np.linspace(0.1, 0.99, 99)
@@ -172,8 +173,18 @@ def rayleigh(output_type, **input):
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
 
+def colebrook(eps_to_D, Re):
+    loss = lambda f: ((1 / f) ** 0.5 + (2 * np.log10((eps_to_D / 3.7) + (2.51 / (Re * (f ** 0.5)))))) ** 2  # squared error
 
+    f0 = 0.05
+    f = minimize(loss, x0=f0, bounds=[(0.008, 0.10)], method='TNC',
+                 options={'maxiter': 10000, 'ftol': 1e-8})['x'][0]
+    return f
 
 
 if __name__ == '__main__':
+    eps_to_D = 0.01
+    Re = 3E+04
+    f = colebrook(eps_to_D, Re)
+
     print('done')
