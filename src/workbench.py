@@ -67,7 +67,16 @@ def nshock(output_type, **input):
             return (1 + k * Ms ** 2) / (1 + k * Msl ** 2)
 
     except KeyError:
-        return NotImplementedError('Inverted relations for normal shock not yet implemented')
+        loss = lambda M, k: (nshock('M', Ms=M, k=k) - input['Msl']) ** 2  # squared error
+
+        # Ms is certainly supersonic
+        M_range = [(1, 10)]
+        M_initial_guess = 1.02
+
+        M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='L-BFGS-B', args=k,
+                      options={'maxiter': 10000, 'ftol': 1e-14})['x'][0]
+        return M
+
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
@@ -142,18 +151,16 @@ def rayleigh(output_type, **input):
 
 def find_minimum(loss, input, k):
     if input['regime'] == 'subsonic':
-        M_range = [(0, 1)]
-        M_initial_guess = 0.98
+        M_range = [(0, 0.9999)]
+        M_initial_guess = 0.1
     elif input['regime'] == 'supersonic':
-        M_range = [(1, 10)]
+        M_range = [(1.0001, 10)]
         M_initial_guess = 1.02
 
-    M1 = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='L-BFGS-B', args=k,
-                 options={'maxiter': 10000, 'ftol': 1e-14})['x'][0]
+    M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
+                 options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
 
-    M2 = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
-                 options={'maxiter': 10000, 'ftol': 1e-14})['x'][0]
-    return 0.5*(M1+M2)
+    return M
 
 
 if __name__ == '__main__':
