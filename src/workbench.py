@@ -22,7 +22,7 @@ def isentropic(output_type, **input):
             return 1 / (1 + 0.5 * (k - 1) * M ** 2)
 
         elif output_type == 'p':
-            return isentropic('T', M=M, k=k) ** ( k / (k-1))
+            return isentropic('T', M=M, k=k) ** (k / (k - 1))
 
         elif output_type == 'A':
             return (1 / M) * ((1 + (0.5 * (k - 1)) * M ** 2) / (0.5 * (k + 1))) ** (
@@ -30,7 +30,7 @@ def isentropic(output_type, **input):
 
     except KeyError:
         if input['A_ratio'] and output_type == 'M':
-            loss = lambda M, k: (isentropic('A', M=M, k=k) - input['A_ratio'])**2       # squared error
+            loss = lambda M, k: (isentropic('A', M=M, k=k) - input['A_ratio']) ** 2  # squared error
 
             if input['regime'] == 'subsonic':
                 M_range = [(0, 1)]
@@ -39,7 +39,8 @@ def isentropic(output_type, **input):
                 M_range = [(1, 10)]
                 M_initial_guess = 1.6
 
-            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k, options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
+            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
+                         options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
             return M
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
@@ -63,7 +64,7 @@ def nshock(output_type, **input):
 
         elif output_type == 'p':
             Msl = nshock('M', Ms=Ms)
-            return (1 + k*Ms**2)/(1 + k*Msl**2)
+            return (1 + k * Ms ** 2) / (1 + k * Msl ** 2)
 
     except KeyError:
         return NotImplementedError('Inverted relations for normal shock not yet implemented')
@@ -77,25 +78,25 @@ def fanno(output_type, **input):
     try:
         M = input['M']
         if output_type == 'T':
-            return ((k+1)/2)*isentropic('T', M=M, k=k)
+            return ((k + 1) / 2) * isentropic('T', M=M, k=k)
 
         elif output_type == 'p':
             T_ratio = fanno('T', M=M, k=k)
-            return (1/M)*T_ratio**0.5
+            return (1 / M) * T_ratio ** 0.5
 
         elif output_type == 'pt':
             T_ratio = fanno('T', M=M, k=k)
-            return (1/M)*T_ratio**( -(k+1)/(2*(k-1)))
+            return (1 / M) * T_ratio ** (-(k + 1) / (2 * (k - 1)))
 
         elif output_type == 'fld':
             T_ratio = fanno('T', M=M, k=k)
-            term1 = ((k+1)/(2*k)) * np.log(T_ratio*M**2)
+            term1 = ((k + 1) / (2 * k)) * np.log(T_ratio * M ** 2)
             term2 = (1 / k) * ((1 / M ** 2) - 1)
             return term1 + term2
 
     except KeyError:
         if input['fld'] and input['regime'] and output_type == 'M':
-            loss = lambda M, k: (fanno('fld', M=M, k=k) - input['fld'])**2  # squared error
+            loss = lambda M, k: (fanno('fld', M=M, k=k) - input['fld']) ** 2  # squared error
 
             if input['regime'] == 'subsonic':
                 M_range = [(0, 1)]
@@ -104,18 +105,56 @@ def fanno(output_type, **input):
                 M_range = [(1, 10)]
                 M_initial_guess = 1.6
 
-            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k, options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
+            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
+                         options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
             return M
 
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
 
+def rayleigh(output_type, **input):
+    k = get_k(input)
+
+    try:
+        M = input['M']
+        if output_type == 'Tt':
+            return (2 * ((1 + k) * M ** 2) / (1 + k * M ** 2) ** 2) * (1 + ((k - 1) / 2) * M ** 2)
+        elif output_type == 'T':
+            return (M * (1 + k)) ** 2 / (1 + k * M ** 2) ** 2
+        elif output_type == 'p':
+            return (1 + k) / (1 + k * M ** 2)
+        elif output_type == 'pt':
+            return rayleigh('p', M=M, k=k) * \
+                   ((1 + ((k - 1) / 2) * M ** 2) / ((k + 1) / 2)) ** (k / (k - 1))
+    except KeyError:
+        if output_type == 'M' and not input['regime']:
+            return ValueError(
+                'You probably forgot to specify the Mach regime. ' +
+                'Cannot determine M without pre-specifying the Mach regime.')
+        known_ratio = list ( set ( input.keys() )  - set(['M', 'k', 'regime']) )[0]   # e.g. 'Tt'
+        loss = lambda M, k: (rayleigh(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
+        M = find_minimum(loss, input, k)
+        return M
+    else:
+        return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
+
+
+def find_minimum(loss, input, k):
+    if input['regime'] == 'subsonic':
+        M_range = [(0, 1)]
+        M_initial_guess = 0.98
+    elif input['regime'] == 'supersonic':
+        M_range = [(1, 10)]
+        M_initial_guess = 1.02
+
+    M1 = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='L-BFGS-B', args=k,
+                 options={'maxiter': 10000, 'ftol': 1e-14})['x'][0]
+
+    M2 = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
+                 options={'maxiter': 10000, 'ftol': 1e-14})['x'][0]
+    return 0.5*(M1+M2)
+
+
 if __name__ == '__main__':
     print('done')
-
-
-
-
-
-
