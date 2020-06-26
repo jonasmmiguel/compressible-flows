@@ -1,7 +1,7 @@
 # Author: Jonas M. Miguel (jonasmmiguel@gmail.com)
 
 import numpy as np
-from scipy.optimize import minimize_scalar, minimize, fsolve, brentq
+from scipy.optimize import minimize, brute
 
 
 def get_k(input):
@@ -67,14 +67,15 @@ def nshock(output_type, **input):
             return (1 + k * Ms ** 2) / (1 + k * Msl ** 2)
 
     except KeyError:
+        assert input['Msl'] != None
         loss = lambda M, k: (nshock('M', Ms=M, k=k) - input['Msl']) ** 2  # squared error
 
         # Ms is certainly supersonic
-        M_range = [(1, 10)]
+        M_range = [(1.01, 10)]
         M_initial_guess = 1.02
 
-        M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='L-BFGS-B', args=k,
-                      options={'maxiter': 10000, 'ftol': 1e-14})['x'][0]
+        M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
+                      options={'maxiter': 10000, 'ftol': 1e-8})['x'][0]
         return M
 
     else:
@@ -122,6 +123,28 @@ def fanno(output_type, **input):
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
 
+def find_minimum(loss, input, k):
+    if input['regime'] == 'subsonic':
+        M_range = [(0, 0.9999)]
+        M_initial_guess = np.linspace(0.1, 0.99, 99)
+    elif input['regime'] == 'supersonic':
+        M_range = [(1.0001, 10)]
+        M_initial_guess = np.linspace(1.05, 3.00, 19)
+
+    Mlist = []
+    for M0 in M_initial_guess:
+        M = minimize(loss, x0=M0,  bounds=M_range, method='TNC', args=k,
+                     options={'maxiter': 100, 'ftol': 1e-5})['x'].mean()
+        Mlist.append(M)
+
+    M_out = np.median(Mlist)
+
+    if (M_out > 0.72) and (M_out < 0.85):
+        ValueError('Estimated value of Mach is probably wrong. Try sth btw. 0.7 and 0.99')
+
+    return M_out
+
+
 def rayleigh(output_type, **input):
     k = get_k(input)
 
@@ -137,30 +160,19 @@ def rayleigh(output_type, **input):
             return rayleigh('p', M=M, k=k) * \
                    ((1 + ((k - 1) / 2) * M ** 2) / ((k + 1) / 2)) ** (k / (k - 1))
     except KeyError:
-        if output_type == 'M' and not input['regime']:
-            return ValueError(
-                'You probably forgot to specify the Mach regime. ' +
+        try:
+            known_ratio = list(set(input.keys()) - set(['M', 'k', 'regime']))[0]  # e.g. 'Tt'
+            loss = lambda M, k: (rayleigh(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
+            M = find_minimum(loss, input, k)
+            return M
+        except KeyError:
+            return KeyError('You probably forgot to specify the Mach regime. ' \
                 'Cannot determine M without pre-specifying the Mach regime.')
-        known_ratio = list ( set ( input.keys() )  - set(['M', 'k', 'regime']) )[0]   # e.g. 'Tt'
-        loss = lambda M, k: (rayleigh(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
-        M = find_minimum(loss, input, k)
-        return M
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
 
-def find_minimum(loss, input, k):
-    if input['regime'] == 'subsonic':
-        M_range = [(0, 0.9999)]
-        M_initial_guess = 0.1
-    elif input['regime'] == 'supersonic':
-        M_range = [(1.0001, 10)]
-        M_initial_guess = 1.02
 
-    M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
-                 options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
-
-    return M
 
 
 if __name__ == '__main__':

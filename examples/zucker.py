@@ -48,6 +48,10 @@ if __name__ == '__main__':
     Tt3 = Tt1
     T3 = Tt3 * isen('T', M=M3)
     Tsl_to_Tstar = (Tsl/T3)*r('T', M=M3)
-    Msl = r('M', T=Tsl_to_Tstar)
-    Ms = ns()
+    Msl = r('M', T=Tsl_to_Tstar, regime='subsonic')
+    Msl = 0.686
+    Ms = ns('Ms', Msl=Msl)
+
+    Tt2 = Tsl/isen('T', M=Msl)
+    q = 1*(Tt2 - Tt1)
     print('done')
