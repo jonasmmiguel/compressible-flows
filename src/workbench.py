@@ -1,8 +1,8 @@
 # Author: Jonas M. Miguel (jonasmmiguel@gmail.com)
 
 import numpy as np
-from scipy.optimize import minimize, brute
-
+from scipy.optimize import minimize, brute, basinhopping            # optimization algorithms
+import matplotlib.pyplot as plt
 
 def get_k(input):
     try:
@@ -28,20 +28,31 @@ def isentropic(output_type, **input):
             return (1 / M) * ((1 + (0.5 * (k - 1)) * M ** 2) / (0.5 * (k + 1))) ** (
                     0.5 * (k + 1) / (k - 1))
 
+    # except KeyError:
+    #     if input['A_ratio'] and output_type == 'M':
+    #         loss = lambda M, k: (isentropic('A', M=M, k=k) - input['A_ratio']) ** 2  # squared error
+    #
+    #         if input['regime'] == 'subsonic':
+    #             M_range = [(0, 1)]
+    #             M_initial_guess = 0.3
+    #         elif input['regime'] == 'supersonic':
+    #             M_range = [(1, 10)]
+    #             M_initial_guess = 1.6
+    #
+    #         M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
+    #                      options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
+    #         return M
+
     except KeyError:
-        if input['A_ratio'] and output_type == 'M':
-            loss = lambda M, k: (isentropic('A', M=M, k=k) - input['A_ratio']) ** 2  # squared error
-
-            if input['regime'] == 'subsonic':
-                M_range = [(0, 1)]
-                M_initial_guess = 0.3
-            elif input['regime'] == 'supersonic':
-                M_range = [(1, 10)]
-                M_initial_guess = 1.6
-
-            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
-                         options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
+        try:
+            known_ratio = list(set(input.keys()) - set(['M', 'k', 'regime']))[0]  # e.g. 'Tt'
+            loss = lambda M, k: (isentropic(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
+            M = find_minimum_simple(loss, input, k)
             return M
+        except KeyError:
+            return KeyError('You probably forgot to specify the Mach regime. ' \
+                'Cannot determine M without pre-specifying the Mach regime.')
+
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
@@ -51,7 +62,7 @@ def nshock(output_type, **input):
 
     try:
         Ms = input['Ms']
-        if output_type == 'M':
+        if output_type == 'Msl':
             term1 = Ms ** 2 + 2 / (k - 1)
             term2 = (2 * k / (k - 1)) * Ms ** 2 - 1
             return (term1 / term2) ** (1 / 2)
@@ -146,6 +157,33 @@ def find_minimum(loss, input, k):
     return M_out
 
 
+def find_minimum_simple(loss, input, k):
+
+    if input['regime'] == 'subsonic':
+        M_range = [(0, 1-1E-08)]
+        M_initial_guess = 0.46
+    elif input['regime'] == 'supersonic':
+        M_range = [(1+1E-08, 10)]
+        M_initial_guess = 1.5
+
+
+    M = basinhopping(loss,
+                     x0=M_initial_guess,
+                     niter=100,
+                     stepsize=0.2,
+                     minimizer_kwargs={'args': k,
+                                       'method': 'L-BFGS-B',
+                                       'bounds': M_range,
+                                       'options': {'xtol': 1E-08},
+                                       }
+                     )['x'][0]
+
+    # if (M_out > 0.72) and (M_out < 0.85):
+    #     ValueError('Estimated value of Mach is probably wrong. Try sth btw. 0.7 and 0.99')
+
+    return M
+
+
 def rayleigh(output_type, **input):
     k = get_k(input)
 
@@ -183,8 +221,9 @@ def colebrook(eps_to_D, Re):
 
 
 if __name__ == '__main__':
-    eps_to_D = 0.01
-    Re = 3E+04
-    f = colebrook(eps_to_D, Re)
+    # eps_to_D = 0.01
+    # Re = 3E+04
+    # f = colebrook(eps_to_D, Re)
 
+    M = isentropic('M', A=3.27793, regime='subsonic')
     print('done')

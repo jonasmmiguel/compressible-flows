@@ -1,84 +1,85 @@
 from src.workbench import isentropic as isen
-from src.workbench import nshock as ns
-from src.workbench import fanno as fn
+from src.workbench import nshock
+from src.workbench import fanno
 import numpy as np
+import pint;                                              # units
+unit = pint.UnitRegistry(
+    autoconvert_offset_to_baseunit=True,
+    system=None,
+    auto_reduce_dimensions=True,)
 
-Runiv = 8.3145              # [J/mol.K]
 
-m_mol_air = 28.9645E-03     # [kg/mol]
-Rair = Runiv / m_mol_air    # [J/kg.K] gas constant for atmospheric air
+Runiv = 8.3145 * unit('J / (mol * K)')
 
-m_mol_n2 = 28E-03           # [kg/mol]
-Rn2 = Runiv / m_mol_n2      # [J/kg.K]
+m_mol_air = 28.9645E-03 * unit('kg / mol')
+Rair = ( Runiv / m_mol_air ) * unit('J / (kg * K)')    # [J/kg.K] gas constant for atmospheric air
 
-m_mol_co2 = 48E-03          # [kg/mol]
-Rco2 = Runiv / m_mol_co2    # [J/kg.K]
+m_mol_n2 = 28E-03 * unit('kg / mol')
+Rn2 = ( Runiv / m_mol_n2 ) * unit('J / (kg * K)')
 
-m_mol_co = 32E-03           # [kg/mol]
-Rco = Runiv / m_mol_co      # [J/kg.K]
+m_mol_co2 = 48E-03 * unit('kg / mol')
+Rco2 = ( Runiv / m_mol_co2 ) * unit('J / (kg * K)')
+
+m_mol_co = 32E-03 * unit('kg / mol')
+Rco = ( Runiv / m_mol_co ) * unit('J / (kg * K)')
 
 
 if __name__ == '__main__':
-    # === A3Q1 ===
-    # assumptions
+    # === L3Q2 ===
+    # material model: Air
     k = 1.4
     R = Rair
 
-    # given
-    M1 = 0.25
-    pt1 = 1.38E+06
-    Tt1 = 278
-    D = 0.0508
-    L = 0.6096
-    f = 0.024
+    # ==========================================
+    # given: design parameters
+    # ==========================================
+    L = 1 * unit('m')
+    D = 1.5 * unit('cm')
+    f = 1.6E-02 * unit('')
 
-    # calculations
-    A = np.pi*(D**2)/4
+    ARn = 2.5 * unit('')
 
-    T1 = isen('T', M=M1) * Tt1
-    p1 = isen('p', M=M1) * pt1
-    rho1 = p1/(R * T1)
-    u1 = M1 * (k * R * T1)**0.5
+    # ==========================================
+    # given: operation parameters
+    # ==========================================
+    pb = 45 * unit('kPa')
 
-    fld_2 = fn('fld', M=M1) - f*L/D
-    M2 = fn('M', fld=fld_2, regime='subsonic')
-    p2 = fn('p', M=M2) * (1 / fn('p', M=M1)) * (isen('p', M=M1)) * pt1
-    Tt2 = Tt1
-    T2 = Tt2 * isen('T', M=M2)
-    rho2 = p2/(R * T2)
-    u2 = M2 * (k * R * T2)**0.5
+    # ==========================================
+    # analysis
+    # ==========================================
+    # state: 2
+    r_A2_Astar = ARn
+    M2 = isen('M', A_ratio=r_A2_Astar, regime='supersonic')
+    r_pt2_p2 = 1 / isen('p', M=M2)
+    r_p2_pstar = fanno('p', M=M2)
+    fld2 = fanno('fld', M=M2)
 
-    Ff = A*( (p2 + rho2 * u2**2) - (p1 + rho1 * u1**2))
+    # state: s
+    Ms_options = [fanno('M', regime='supersonic', fld=(fanno('fld', M=M2) - (f * L / D))),
+                  fanno('M', regime='supersonic', fld=(fanno('fld', M=M2)))]
 
-    # === A3Q2 ===
-    # assumptions
-    k = 1.4
+    pt1_options = []
+    for Ms in Ms_options:
+        flds = fanno('fld', M=Ms)
+        r_pstar_ps = 1 / fanno('p', M=Ms)
 
-    # given
-    ARn = 2.5
-    L = 13xqayqasdcfasdfghjk
-    D = 1.5E-02
-    f = 0.016
-    pb = 45E+03
+        # state: s'
+        Msl = nshock('Msl', Ms=Ms)
+        r_ps_psl = nshock('p', Ms=Ms)
+        r_psl_pstar = fanno('p', M=Msl)
+        fldsl = fanno('fld', M=Msl)
 
-    # both cases
-    Me = isen('M', A_ratio=ARn, regime='supersonic')
+        # state: 3
+        deltaxsup = (fld2 - flds) * D / f
+        deltaxsub = L - deltaxsup
+        fld_deltaxsub = (f/D) * deltaxsub
+        fld3 = fldsl - fld_deltaxsub
+        M3 = fanno('M', fld=fld3)
+        r_pstar_p3 = 1 / fanno('p', M=M3)
+        r_pstar_pb = r_pstar_p3
 
-    # case p0max
-    fld_e = fn('fld', M=Me)
-    fld_s = fld_e - f*L/D
-    Ms = fn('M', fld=fld_s, regime='supersonic')
-
-    # case p0min
-    Msl = ns('M', Ms=Me)
-    fld_sl = fn('fld', M=Msl)
-    fld_l = fld_sl - f*L/D
-    Ml = fn('M', fld=fld_l, regime='subsonic')
-    term1 = isen('p', M=Me) * ns('p', M=Me)
-    p0min = isen('p', M=Me) * ns('p', M=Me) * fn('p', M=Msl) * fn('p', M=Ml)
-
-
-
-
+        pt2 = r_pt2_p2 * r_p2_pstar * r_pstar_ps * r_ps_psl * r_psl_pstar * r_pstar_pb * pb
+        pt1 = pt2
+        pt1_options.append(pt1)
 
     print('done')
