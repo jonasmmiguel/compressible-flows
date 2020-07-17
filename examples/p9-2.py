@@ -33,53 +33,65 @@ if __name__ == '__main__':
     # ==========================================
     # given: design parameters
     # ==========================================
-    L = 1 * unit('m')
-    D = 1.5 * unit('cm')
-    f = 1.6E-02 * unit('')
+    L = 6.1 * unit('m')
+    D = 30.5 * unit('cm')
+    f = 0.02 * unit('')
 
-    ARn = 2.5 * unit('')
+    ARn = 3.0 * unit('')
 
     # ==========================================
     # given: operation parameters
     # ==========================================
-    pb = 45 * unit('kPa')
+    pc = 690 * unit('kPa')  # chamber
 
     # ==========================================
     # analysis
     # ==========================================
-    # state: 2
-    r_A2_Astar = ARn
-    M2 = isen('M', A_ratio=r_A2_Astar, regime='supersonic')
-    r_pt2_p2 = 1 / isen('p', M=M2)
-    r_p2_pstar = fanno('p', M=M2)
-    fld2 = fanno('fld', M=M2)
+    # state: i
+    r_Ai_Aistar_isen = ARn
+    Mi = isen('M', A=r_Ai_Aistar_isen, regime='supersonic')
+    r_pi_pc = isen('p', M=Mi)
+    r_pstarf_pi = 1 / fanno('p', M=Mi)
+    fldi = fanno('fld', M=Mi)  # OK: fld2 = 0.42 < 1.07 = fld
 
     # state: s
-    Ms_options = [fanno('M', regime='supersonic', fld=(fanno('fld', M=M2) - (f * L / D))),
-                  fanno('M', regime='supersonic', fld=(fanno('fld', M=M2)))]
+    fld = f * L / D
+    fld_s_min = fldi - fld
+    fld_s_max = fldi
+    Ms_options = [fanno('M', fld=fld_s_min, regime='supersonic'),
+                  fanno('M', fld=fld_s_max, regime='supersonic')]
 
-    pt1_options = []
+    configs = {'pe': [],
+               'Me': [],
+               'deltaxsup/L': [],
+               }
     for Ms in Ms_options:
+        # state: s
+        r_ps_pstarf = fanno('p', M=Ms)
         flds = fanno('fld', M=Ms)
-        r_pstar_ps = 1 / fanno('p', M=Ms)
 
         # state: s'
         Msl = nshock('Msl', Ms=Ms)
-        r_ps_psl = nshock('p', Ms=Ms)
-        r_psl_pstar = fanno('p', M=Msl)
+        r_psl_ps = nshock('p', Ms=Ms)  # check: nshock 'p' ratio really implemented as psl/ps or ps/psl?
+        r_pstarf_psl = 1 / fanno('p', M=Msl)
         fldsl = fanno('fld', M=Msl)
 
-        # state: 3
-        deltaxsup = (fld2 - flds) * D / f
+        # state: e
+        deltaxsup = (fldi - flds) * D / f
         deltaxsub = L - deltaxsup
         fld_deltaxsub = (f/D) * deltaxsub
-        fld3 = fldsl - fld_deltaxsub
-        M3 = fanno('M', fld=fld3)
-        r_pstar_p3 = 1 / fanno('p', M=M3)
-        r_pstar_pb = r_pstar_p3
+        flde = fldsl - fld_deltaxsub
+        Me = fanno('M', fld=flde, regime='subsonic')
+        r_pe_pstarf = fanno('p', M=Me)
 
-        pt2 = r_pt2_p2 * r_p2_pstar * r_pstar_ps * r_ps_psl * r_psl_pstar * r_pstar_pb * pb
-        pt1 = pt2
-        pt1_options.append(pt1)
+        pe = r_pe_pstarf * r_pstarf_psl * r_psl_ps * r_ps_pstarf * r_pstarf_pi * r_pi_pc * pc
 
+        # ==========================================
+        # logging results
+        # ==========================================
+        configs['pe'].append(pe)
+        configs['Me'].append(Me)
+        configs['deltaxsup/L'].append(deltaxsup/L)
+
+    print(configs)
     print('done')

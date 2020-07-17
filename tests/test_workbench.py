@@ -750,7 +750,7 @@ def test_isentropic(k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu):
                              (1.4, 10.00, 0.38758, 116.50000, 20.38750, 8.25000, 0.00304, 129.21697),
                          ])
 def test_nshock(k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1):
-    assert wb.nshock('M', Ms=Ms, k=k) == approx(Msl, abs=EPS)
+    assert wb.nshock('Msl', Ms=Ms, k=k) == approx(Msl, abs=EPS_M)
     assert wb.nshock('p', Ms=Ms, k=k) == approx(p_ratio, abs=EPS)
     assert wb.nshock('pt', Ms=Ms, k=k) == approx(pt_ratio, abs=EPS)
     assert wb.nshock('Ms', Msl=Msl, k=k) == approx(Ms, abs=EPS_M)

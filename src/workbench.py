@@ -4,6 +4,7 @@ import numpy as np
 from scipy.optimize import minimize, brute, basinhopping            # optimization algorithms
 import matplotlib.pyplot as plt
 
+
 def get_k(input):
     try:
         return input['k']
@@ -11,6 +12,28 @@ def get_k(input):
         return 1.4
     else:
         ValueError('k is undefined')
+
+
+def find_minimum(loss, input, k, niter=100, stepsize=0.2):
+
+    if input['regime'] == 'subsonic':
+        M_range = [(0, 1-1E-08)]
+        M_initial_guess = 0.3
+    elif input['regime'] == 'supersonic':
+        M_range = [(1+1E-08, 10)]
+        M_initial_guess = 2.0
+
+    M = basinhopping(loss,
+                     x0=M_initial_guess,
+                     niter=niter,
+                     stepsize=stepsize,
+                     minimizer_kwargs={'args': k,
+                                       'method': 'L-BFGS-B',
+                                       'bounds': M_range,
+                                       'options': {'ftol': 1E-15},
+                                       }
+                     )['x'][0]
+    return M
 
 
 def isentropic(output_type, **input):
@@ -28,26 +51,11 @@ def isentropic(output_type, **input):
             return (1 / M) * ((1 + (0.5 * (k - 1)) * M ** 2) / (0.5 * (k + 1))) ** (
                     0.5 * (k + 1) / (k - 1))
 
-    # except KeyError:
-    #     if input['A_ratio'] and output_type == 'M':
-    #         loss = lambda M, k: (isentropic('A', M=M, k=k) - input['A_ratio']) ** 2  # squared error
-    #
-    #         if input['regime'] == 'subsonic':
-    #             M_range = [(0, 1)]
-    #             M_initial_guess = 0.3
-    #         elif input['regime'] == 'supersonic':
-    #             M_range = [(1, 10)]
-    #             M_initial_guess = 1.6
-    #
-    #         M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
-    #                      options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
-    #         return M
-
     except KeyError:
         try:
-            known_ratio = list(set(input.keys()) - set(['M', 'k', 'regime']))[0]  # e.g. 'Tt'
-            loss = lambda M, k: (isentropic(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
-            M = find_minimum_simple(loss, input, k)
+            known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # The e.g. 'Tt'
+            loss = lambda M, k: (isentropic(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # function we want to minimize. We use the squared error for penalizing (1) negative and positive deviations equaly and (2) w/ high smoothness
+            M = find_minimum(loss, input, k)
             return M
         except KeyError:
             return KeyError('You probably forgot to specify the Mach regime. ' \
@@ -74,21 +82,18 @@ def nshock(output_type, **input):
             return (term1a / term1b) ** (k / (k - 1)) * term3 ** (1 / (1 - k))
 
         elif output_type == 'p':
-            Msl = nshock('M', Ms=Ms)
+            Msl = nshock('Msl', Ms=Ms)
             return (1 + k * Ms ** 2) / (1 + k * Msl ** 2)
 
     except KeyError:
-        assert input['Msl'] != None
-        loss = lambda M, k: (nshock('M', Ms=M, k=k) - input['Msl']) ** 2  # squared error
-
-        # Ms is certainly supersonic
-        M_range = [(1.01, 10)]
-        M_initial_guess = 1.02
-
-        M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
-                      options={'maxiter': 10000, 'ftol': 1e-8})['x'][0]
-        return M
-
+        try:
+            known_ratio = list(set(input.keys()) - set(['k']))[0]  # e.g. 'Tt'
+            loss = lambda Ms, k: ( nshock(known_ratio, Ms=Ms, k=k) - input[known_ratio] ) ** 2  # squared error
+            input['regime'] = 'supersonic'
+            Ms = find_minimum(loss, input, k, niter=800)
+            return Ms
+        except KeyError:
+            NotImplementedError('Something went wrong. Check if input ({}), output ({}) configuration makes sense.'.format(input, output_type))
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
@@ -116,72 +121,16 @@ def fanno(output_type, **input):
             return term1 + term2
 
     except KeyError:
-        if input['fld'] and input['regime'] and output_type == 'M':
-            loss = lambda M, k: (fanno('fld', M=M, k=k) - input['fld']) ** 2  # squared error
-
-            if input['regime'] == 'subsonic':
-                M_range = [(0, 1)]
-                M_initial_guess = 0.3
-            elif input['regime'] == 'supersonic':
-                M_range = [(1, 10)]
-                M_initial_guess = 1.6
-
-            M = minimize(loss, x0=np.array(M_initial_guess), bounds=M_range, method='TNC', args=k,
-                         options={'maxiter': 100, 'ftol': 1e-8})['x'][0]
+        try:
+            known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # The e.g. 'Tt'
+            loss = lambda M, k: (fanno(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # function we want to minimize. We use the squared error for penalizing (1) negative and positive deviations equaly and (2) w/ high smoothness
+            M = find_minimum(loss, input, k, niter=100)
             return M
-
+        except KeyError:
+            return KeyError('You probably forgot to specify the Mach regime. ' \
+                            'Cannot determine M without pre-specifying the Mach regime.')
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
-
-
-def find_minimum(loss, input, k):
-
-    if input['regime'] == 'subsonic':
-        M_range = [(0, 0.9999)]
-        M_initial_guess = np.linspace(0.1, 0.99, 99)
-    elif input['regime'] == 'supersonic':
-        M_range = [(1.0001, 10)]
-        M_initial_guess = np.linspace(1.05, 3.00, 19)
-
-    Mlist = []
-    for M0 in M_initial_guess:
-        M = minimize(loss, x0=M0,  bounds=M_range, method='TNC', args=k,
-                     options={'maxiter': 100, 'ftol': 1e-5})['x'].mean()
-        Mlist.append(M)
-
-    M_out = np.median(Mlist)
-
-    if (M_out > 0.72) and (M_out < 0.85):
-        ValueError('Estimated value of Mach is probably wrong. Try sth btw. 0.7 and 0.99')
-
-    return M_out
-
-
-def find_minimum_simple(loss, input, k):
-
-    if input['regime'] == 'subsonic':
-        M_range = [(0, 1-1E-08)]
-        M_initial_guess = 0.46
-    elif input['regime'] == 'supersonic':
-        M_range = [(1+1E-08, 10)]
-        M_initial_guess = 1.5
-
-
-    M = basinhopping(loss,
-                     x0=M_initial_guess,
-                     niter=100,
-                     stepsize=0.2,
-                     minimizer_kwargs={'args': k,
-                                       'method': 'L-BFGS-B',
-                                       'bounds': M_range,
-                                       'options': {'xtol': 1E-08},
-                                       }
-                     )['x'][0]
-
-    # if (M_out > 0.72) and (M_out < 0.85):
-    #     ValueError('Estimated value of Mach is probably wrong. Try sth btw. 0.7 and 0.99')
-
-    return M
 
 
 def rayleigh(output_type, **input):
@@ -200,9 +149,9 @@ def rayleigh(output_type, **input):
                    ((1 + ((k - 1) / 2) * M ** 2) / ((k + 1) / 2)) ** (k / (k - 1))
     except KeyError:
         try:
-            known_ratio = list(set(input.keys()) - set(['M', 'k', 'regime']))[0]  # e.g. 'Tt'
+            known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # e.g. 'Tt'
             loss = lambda M, k: (rayleigh(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
-            M = find_minimum(loss, input, k)
+            M = find_minimum(loss, input, k, niter=150, stepsize=0.3)
             return M
         except KeyError:
             return KeyError('You probably forgot to specify the Mach regime. ' \
@@ -225,5 +174,8 @@ if __name__ == '__main__':
     # Re = 3E+04
     # f = colebrook(eps_to_D, Re)
 
-    M = isentropic('M', A=3.27793, regime='subsonic')
+    # M = isentropic('M', A=3.27793, regime='subsonic')
+    # Msl = nshock('Msl', Ms=1.5)
+    #
+    Ms2 = nshock('Ms', Msl=0.7)
     print('done')
