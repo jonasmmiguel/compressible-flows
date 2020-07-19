@@ -87,7 +87,7 @@ if __name__ == '__main__':
         pe = r_pe_pstarf * r_pstarf_psl * r_psl_ps * r_ps_pstarf * r_pstarf_pi * r_pi_pc * pc
 
         # ==========================================
-        # logging results
+        # log results
         # ==========================================
         configs['pe'].append(pe)
         configs['Me'].append(Me)
