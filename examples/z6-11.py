@@ -44,19 +44,16 @@ if __name__ == '__main__':
     # analysis
     # ==========================================
     # geometric relations
-    r_Ae_Aestardp = isen('A', M=Me_dp, regime='subsonic')
-    r_Ae_At = r_Ae_Aestardp
+    r_Ae_At = r_Ae_Aestardp = isen('A', M=Me_dp, regime='subsonic')
     r_As_At = (1 + a * (r_Ae_At ** 0.5 - 1)) ** 2
 
-    r_Ae_As = r_Ae_At * (1 / r_As_At)
-    r_Ae_Asl = r_Ae_As
+    r_Ae_Asl = r_Ae_As = r_Ae_At * (1 / r_As_At)
 
     # state: s
     r_As_Asstar = r_As_At
     Ms = isen('M', A=r_As_Asstar, regime='supersonic')
 
-    r_ps_pst = isen('p', M=Ms)
-    r_ps_pc = r_ps_pst
+    r_ps_pc = r_ps_pst = isen('p', M=Ms)
 
     # state: sl
     Msl = nshock('Msl', Ms=Ms)

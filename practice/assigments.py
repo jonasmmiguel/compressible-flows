@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # given
     ARn = 2.5
-    L = 13xqayqasdcfasdfghjk
+    L = 13
     D = 1.5E-02
     f = 0.016
     pb = 45E+03
