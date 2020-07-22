@@ -1,12 +1,13 @@
 # Author: Jonas M. Miguel (jonasmmiguel@gmail.com)
 
 import numpy as np
-from scipy.optimize import minimize, minimize_scalar, brute, fmin  # optimization algorithms
-import matplotlib.pyplot as plt
+from scipy.optimize import minimize, minimize_scalar, brute  # optimization algorithms
 
 
 def get_k(input):
     try:
+        return input['k'].magnitude
+    except AttributeError:
         return input['k']
     except KeyError:
         return 1.4
@@ -60,7 +61,7 @@ def calculate_mach(input, mode='nshock', maxiter=500):
             'Invalid input type ({}).'.format(input))
 
 
-def find_minimum(loss, input, k, maxiter=500, optimizer='brent'):
+def find_minimum(loss, input, k, maxiter=500, optimizer='brent', display_optimizer_status=False):
     if input['regime'] == 'subsonic':
         M_range = [0, 1 - 1E-08]
     elif input['regime'] == 'supersonic':
@@ -73,14 +74,14 @@ def find_minimum(loss, input, k, maxiter=500, optimizer='brent'):
                             bounds=M_range,
                             options={'xatol': 1E-08,
                                      'maxiter': maxiter,
-                                     'disp': True, }
+                                     'disp': display_optimizer_status, }
                             )['x']
 
     elif optimizer == 'bruteforce':
         M = brute(func=loss,
                   args=(k,),
                   ranges=(slice(0.70, 1.00, 1E-03),),
-                  disp=True,
+                  disp=display_optimizer_status,
                   finish=None,
                   )
     return M
