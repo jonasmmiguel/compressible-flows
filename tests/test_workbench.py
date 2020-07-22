@@ -1,6 +1,5 @@
 import src.workbench as wb
 import pytest
-from pytest import approx
 from numpy import nan
 
 EPS = 1E-05
@@ -399,14 +398,14 @@ def test_get_k(input, output):
                              (1.4, 3.96, 0.00695, 0.24176, 10.34197, 0.07185, 65.25260, 14.6270)
                          ])
 def test_isentropic(k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu):
-    assert wb.isentropic('T', k=k, M=M) == approx(T_ratio, abs=EPS)
-    assert wb.isentropic('p', k=k, M=M) == approx(p_ratio, abs=EPS)
-    assert wb.isentropic('A', k=k, M=M) == approx(A_ratio, abs=EPS)
+    assert wb.isentropic('T', k=k, M=M) == pytest.approx(T_ratio, abs=EPS)
+    assert wb.isentropic('p', k=k, M=M) == pytest.approx(p_ratio, abs=EPS)
+    assert wb.isentropic('A', k=k, M=M) == pytest.approx(A_ratio, abs=EPS)
 
     if M < 1:
-        assert wb.isentropic('M', k=k, A=A_ratio, regime='subsonic') == approx(M, abs=EPS_M)
+        assert wb.isentropic('M', k=k, A=A_ratio, regime='subsonic') == pytest.approx(M, abs=EPS_M)
     elif M > 1:
-        assert wb.isentropic('M', k=k, A=A_ratio, regime='supersonic') == approx(M, abs=EPS_M)
+        assert wb.isentropic('M', k=k, A=A_ratio, regime='supersonic') == pytest.approx(M, abs=EPS_M)
 
 
 @pytest.mark.parametrize('k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1',
@@ -750,10 +749,10 @@ def test_isentropic(k, M, p_ratio, T_ratio, A_ratio, pA_ratio, nu, mu):
                              (1.4, 10.00, 0.38758, 116.50000, 20.38750, 8.25000, 0.00304, 129.21697),
                          ])
 def test_nshock(k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1):
-    assert wb.nshock('Msl', Ms=Ms, k=k) == approx(Msl, abs=EPS_M)
-    assert wb.nshock('p', Ms=Ms, k=k) == approx(p_ratio, abs=EPS)
-    assert wb.nshock('pt', Ms=Ms, k=k) == approx(pt_ratio, abs=EPS)
-    assert wb.nshock('Ms', Msl=Msl, k=k) == approx(Ms, abs=EPS_M)
+    assert wb.nshock('Msl', Ms=Ms, k=k) == pytest.approx(Msl, abs=EPS_M)
+    assert wb.nshock('p', Ms=Ms, k=k) == pytest.approx(p_ratio, abs=EPS)
+    assert wb.nshock('pt', Ms=Ms, k=k) == pytest.approx(pt_ratio, abs=EPS)
+    assert wb.nshock('Ms', Msl=Msl, k=k) == pytest.approx(Ms, abs=EPS_M)
 
 
 @pytest.mark.parametrize('k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R',
@@ -1196,14 +1195,14 @@ def test_nshock(k, Ms, Msl, p_ratio, T_ratio, vel_ratio, pt_ratio, pt2_to_p1):
                              (1.4, 10.00, 0.05714, 0.02390, 535.93750, 2.39046, 0.78683, 6.28402),
                          ])
 def test_fanno(k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R):
-    assert wb.fanno('T', M=M, k=k) == approx(T_ratio, abs=EPS)
-    assert wb.fanno('p', M=M, k=k) == approx(p_ratio, abs=EPS)
-    assert wb.fanno('pt', M=M, k=k) == approx(pt_ratio, abs=EPS)
-    assert wb.fanno('fld', M=M, k=k) == approx(fLmax_to_D, abs=EPS)
+    assert wb.fanno('T', M=M, k=k) == pytest.approx(T_ratio, abs=EPS)
+    assert wb.fanno('p', M=M, k=k) == pytest.approx(p_ratio, abs=EPS)
+    assert wb.fanno('pt', M=M, k=k) == pytest.approx(pt_ratio, abs=EPS)
+    assert wb.fanno('fld', M=M, k=k) == pytest.approx(fLmax_to_D, abs=EPS)
     if M < 1:
-        assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='subsonic') == approx(M, abs=EPS_M)
+        assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='subsonic') == pytest.approx(M, abs=EPS_M)
     elif M > 1:
-        assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='supersonic') == approx(M, abs=EPS_M)
+        assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='supersonic') == pytest.approx(M, abs=EPS_M)
 
 
 @pytest.mark.parametrize('k, M, Tt_ratio, T_ratio, p_ratio, pt_ratio, v_ratio, Smax_to_R',
@@ -1644,22 +1643,23 @@ def test_fanno(k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R)
                              (1.4, 9.00, 0.51098, 0.03565, 0.02098, 233.88395, 1.69930, 7.80482)
                          ])
 def test_rayleigh(k, M, Tt_ratio, T_ratio, p_ratio, pt_ratio, v_ratio, Smax_to_R):
-    assert wb.rayleigh('Tt', M=M, k=k) == approx(Tt_ratio, abs=EPS)
-    assert wb.rayleigh('T', M=M, k=k) == approx(T_ratio, abs=EPS)
-    assert wb.rayleigh('p', M=M, k=k) == approx(p_ratio, abs=EPS)
-    assert wb.rayleigh('pt', M=M, k=k) == approx(pt_ratio, abs=EPS)
-    # assert wb.rayleigh('v', M=M, k=k) == approx(v_ratio, abs=EPS)
-    # assert wb.rayleigh('s', M=M, k=k) == approx(Smax_to_R, abs=EPS)
+    assert wb.rayleigh('Tt', M=M, k=k) == pytest.approx(Tt_ratio, abs=EPS)
+    assert wb.rayleigh('T', M=M, k=k) == pytest.approx(T_ratio, abs=EPS)
+    assert wb.rayleigh('p', M=M, k=k) == pytest.approx(p_ratio, abs=EPS)
+    assert wb.rayleigh('pt', M=M, k=k) == pytest.approx(pt_ratio, abs=EPS)
+    assert wb.rayleigh('dels', M=M, k=k) == pytest.approx(Smax_to_R, abs=EPS)
+    # assert wb.rayleigh('v', M=M, k=k) == pytest.approx(v_ratio, abs=EPS)
+    # assert wb.rayleigh('s', M=M, k=k) == pytest.approx(Smax_to_R, abs=EPS)
     if M < 1:
-        assert wb.rayleigh('M', Tt=Tt_ratio, k=k, regime='subsonic') == approx(M, abs=EPS_M)
-        assert wb.rayleigh('M', T=T_ratio, k=k, regime='subsonic') == approx(M, abs=EPS_M)
-        assert wb.rayleigh('M', p=p_ratio, k=k, regime='subsonic') == approx(M, abs=EPS_M)
-        assert wb.rayleigh('M', pt=pt_ratio, k=k, regime='subsonic') == approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', Tt=Tt_ratio, k=k, regime='subsonic') == pytest.approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', T=T_ratio, k=k, regime='subsonic') == pytest.approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', p=p_ratio, k=k, regime='subsonic') == pytest.approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', pt=pt_ratio, k=k, regime='subsonic') == pytest.approx(M, abs=EPS_M)
     elif M > 1:
-        assert wb.rayleigh('M', Tt=Tt_ratio, k=k, regime='supersonic') == approx(M, abs=EPS_M)
-        assert wb.rayleigh('M', T=T_ratio, k=k, regime='supersonic') == approx(M, abs=EPS_M)
-        assert wb.rayleigh('M', p=p_ratio, k=k, regime='supersonic') == approx(M, abs=EPS_M)
-        assert wb.rayleigh('M', pt=pt_ratio, k=k, regime='supersonic') == approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', Tt=Tt_ratio, k=k, regime='supersonic') == pytest.approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', T=T_ratio, k=k, regime='supersonic') == pytest.approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', p=p_ratio, k=k, regime='supersonic') == pytest.approx(M, abs=EPS_M)
+        assert wb.rayleigh('M', pt=pt_ratio, k=k, regime='supersonic') == pytest.approx(M, abs=EPS_M)
 
 
 

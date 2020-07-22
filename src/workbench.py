@@ -1,7 +1,7 @@
 # Author: Jonas M. Miguel (jonasmmiguel@gmail.com)
 
 import numpy as np
-from scipy.optimize import minimize, brute, basinhopping            # optimization algorithms
+from scipy.optimize import minimize, minimize_scalar, brute, fmin  # optimization algorithms
 import matplotlib.pyplot as plt
 
 
@@ -14,25 +14,28 @@ def get_k(input):
         ValueError('k is undefined')
 
 
-def find_minimum(loss, input, k, niter=100, stepsize=0.2):
-
+def find_minimum(loss, input, k, maxiter=500, method='brent'):
     if input['regime'] == 'subsonic':
-        M_range = [(0, 1-1E-08)]
-        M_initial_guess = 0.3
+        M_range = [0, 1 - 1E-08]
     elif input['regime'] == 'supersonic':
-        M_range = [(1+1E-08, 10)]
-        M_initial_guess = 2.0
+        M_range = [1 + 1E-08, 10]
 
-    M = basinhopping(loss,
-                     x0=M_initial_guess,
-                     niter=niter,
-                     stepsize=stepsize,
-                     minimizer_kwargs={'args': k,
-                                       'method': 'L-BFGS-B',
-                                       'bounds': M_range,
-                                       'options': {'ftol': 1E-15},
-                                       }
-                     )['x'][0]
+    if method == 'brent':
+        M = minimize_scalar(fun=loss,
+                            args=(k),
+                            method='bounded',
+                            bounds=M_range,
+                            options={'xatol': 1E-08,
+                                     'maxiter': maxiter,
+                                     'disp': True, }
+                            )['x']
+    elif method == 'bruteforce':
+        M = brute(func=loss,
+                  args=(k,),
+                  ranges=(slice(0.70, 1.00, 1E-03),),
+                  disp=True,
+                  finish=None,
+                  )
     return M
 
 
@@ -54,12 +57,13 @@ def isentropic(output_type, **input):
     except KeyError:
         try:
             known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # The e.g. 'Tt'
-            loss = lambda M, k: (isentropic(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # function we want to minimize. We use the squared error for penalizing (1) negative and positive deviations equaly and (2) w/ high smoothness
-            M = find_minimum(loss, input, k)
+            loss = lambda M, k: (isentropic(known_ratio, M=M, k=k) - input[
+                known_ratio]) ** 2  # function we want to minimize. We use the squared error for penalizing (1) negative and positive deviations equaly and (2) w/ high smoothness
+            M = find_minimum(loss, input, k, maxiter=1000)
             return M
         except KeyError:
             return KeyError('You probably forgot to specify the Mach regime. ' \
-                'Cannot determine M without pre-specifying the Mach regime.')
+                            'Cannot determine M without pre-specifying the Mach regime.')
 
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
@@ -88,12 +92,14 @@ def nshock(output_type, **input):
     except KeyError:
         try:
             known_ratio = list(set(input.keys()) - set(['k']))[0]  # e.g. 'Tt'
-            loss = lambda Ms, k: ( nshock(known_ratio, Ms=Ms, k=k) - input[known_ratio] ) ** 2  # squared error
+            loss = lambda Ms, k: (nshock(known_ratio, Ms=Ms, k=k) - input[known_ratio]) ** 2  # squared error
             input['regime'] = 'supersonic'
-            Ms = find_minimum(loss, input, k, niter=800)
+            Ms = find_minimum(loss, input, k, maxiter=1500)
             return Ms
         except KeyError:
-            NotImplementedError('Something went wrong. Check if input ({}), output ({}) configuration makes sense.'.format(input, output_type))
+            NotImplementedError(
+                'Something went wrong. Check if input ({}), output ({}) configuration makes sense.'.format(input,
+                                                                                                           output_type))
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
@@ -123,8 +129,9 @@ def fanno(output_type, **input):
     except KeyError:
         try:
             known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # The e.g. 'Tt'
-            loss = lambda M, k: (fanno(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # function we want to minimize. We use the squared error for penalizing (1) negative and positive deviations equaly and (2) w/ high smoothness
-            M = find_minimum(loss, input, k, niter=100)
+            loss = lambda M, k: (fanno(known_ratio, M=M, k=k) - input[
+                known_ratio]) ** 2  # function we want to minimize. We use the squared error for penalizing (1) negative and positive deviations equaly and (2) w/ high smoothness
+            M = find_minimum(loss, input, k, maxiter=1000)
             return M
         except KeyError:
             return KeyError('You probably forgot to specify the Mach regime. ' \
@@ -141,27 +148,34 @@ def rayleigh(output_type, **input):
         if output_type == 'Tt':
             return (2 * ((1 + k) * M ** 2) / (1 + k * M ** 2) ** 2) * (1 + ((k - 1) / 2) * M ** 2)
         elif output_type == 'T':
-            return (M * (1 + k)) ** 2 / (1 + k * M ** 2) ** 2
+            return ((M * (1 + k)) ** 2) / ((1 + k * M ** 2) ** 2)
         elif output_type == 'p':
             return (1 + k) / (1 + k * M ** 2)
         elif output_type == 'pt':
             return rayleigh('p', M=M, k=k) * \
                    ((1 + ((k - 1) / 2) * M ** 2) / ((k + 1) / 2)) ** (k / (k - 1))
+        elif output_type == 'dels':
+            return (k / (k - 1)) * np.log(1 / (M ** 2)) + ((k + 1) / (k - 1)) * np.log((1 + k * M ** 2) / (1 + k))
     except KeyError:
         try:
             known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # e.g. 'Tt'
             loss = lambda M, k: (rayleigh(known_ratio, M=M, k=k) - input[known_ratio]) ** 2  # squared error
-            M = find_minimum(loss, input, k, niter=150, stepsize=0.3)
+            if (known_ratio == 'T') and (input['T'] > 1.0):
+                method = 'bruteforce'
+            else:
+                method = 'brent'
+            M = find_minimum(loss, input, k, maxiter=1000, method=method)
             return M
         except KeyError:
             return KeyError('You probably forgot to specify the Mach regime. ' \
-                'Cannot determine M without pre-specifying the Mach regime.')
+                            'Cannot determine M without pre-specifying the Mach regime.')
     else:
         return NotImplementedError('Unexpected input ({}), output ({}) configuration given.'.format(input, output_type))
 
 
 def colebrook(eps_to_D, Re):
-    loss = lambda f: ((1 / f) ** 0.5 + (2 * np.log10((eps_to_D / 3.7) + (2.51 / (Re * (f ** 0.5)))))) ** 2  # squared error
+    loss = lambda f: ((1 / f) ** 0.5 + (
+                2 * np.log10((eps_to_D / 3.7) + (2.51 / (Re * (f ** 0.5)))))) ** 2  # squared error
 
     f0 = 0.05
     f = minimize(loss, x0=f0, bounds=[(0.008, 0.10)], method='TNC',
