@@ -126,6 +126,9 @@ def fanno(output_type, **input):
             term2 = (1 / k) * ((1 / M ** 2) - 1)
             return term1 + term2
 
+        elif output_type == 'dels':
+            return np.log((1 / M) * ((1 + 0.5 * (k - 1) * M ** 2) / (1 + 0.5 * (k - 1))) ** ((k + 1) / (2 * (k - 1))))
+
     except KeyError:
         try:
             known_ratio = list(set(input.keys()) - set(['k', 'regime']))[0]  # The e.g. 'Tt'

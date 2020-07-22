@@ -1199,6 +1199,7 @@ def test_fanno(k, M, T_ratio, p_ratio, pt_ratio, v_ratio, fLmax_to_D, Smax_to_R)
     assert wb.fanno('p', M=M, k=k) == pytest.approx(p_ratio, abs=EPS)
     assert wb.fanno('pt', M=M, k=k) == pytest.approx(pt_ratio, abs=EPS)
     assert wb.fanno('fld', M=M, k=k) == pytest.approx(fLmax_to_D, abs=EPS)
+    assert wb.fanno('dels', M=M, k=k) == pytest.approx(Smax_to_R, abs=EPS)
     if M < 1:
         assert wb.fanno('M', fld=fLmax_to_D, k=k, regime='subsonic') == pytest.approx(M, abs=EPS_M)
     elif M > 1:
