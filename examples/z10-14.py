@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
+
 if __name__ == '__main__':
     # ==========================================
     # given: material model parameters
@@ -14,50 +15,43 @@ if __name__ == '__main__':
     # ==========================================
     # given: design parameters
     # ==========================================
-    Me_dp = 2.6 * unit('')
+    ARn = 4.0 * unit('')
 
     # ==========================================
     # given: operation parameters
     # ==========================================
-    a = (3/4) * unit('')
+    pti = 35E+05 * unit('N/m²')
+    Tti = 450 * unit('K')
+
+    Tsl = 560 * unit('K')
 
     # ==========================================
     # analysis
     # ==========================================
-    # geometric relations
-    r_Ae_At = r_Ae_Aestardp = isen('A', M=Me_dp, regime='subsonic')
-    r_As_At = (1 + a * (r_Ae_At ** 0.5 - 1)) ** 2
+    # state e
+    Me = isen('M', A=ARn, regime='supersonic')
+    Tte = Tti
+    Te = Tte * isen('T', M=Me)
+    r_TtstarR_Tte = 1 / rayleigh('Tt', M=Me)
+    r_Te_TstarR = rayleigh('T', M=Me)
 
-    r_Ae_Asl = r_Ae_As = r_Ae_At * (1 / r_As_At)
+    # state s'
+    r_Tsl_Te = Tsl / Te
+    r_Tsl_TstarR = r_Tsl_Te * r_Te_TstarR
+    Msl = rayleigh('M', T=r_Tsl_TstarR, regime='subsonic')
 
-    # state: s
-    r_As_Asstar = r_As_At
-    Ms = isen('M', A=r_As_Asstar, regime='supersonic')
+    # state s
+    Ms = nshock('Ms', Msl=Msl)
+    r_Tts_TtstarR = rayleigh('Tt', M=Ms)
+    Tts = r_Tts_TtstarR * r_TtstarR_Tte * Tte
 
-    r_ps_pc = r_ps_pst = isen('p', M=Ms)
-
-    # state: sl
-    Msl = nshock('Msl', Ms=Ms)
-    r_Asl_Aslstar = isen('A', M=Msl)
-
-    r_ptsl_psl = 1 / isen('p', M=Msl)
-    r_pte_psl = r_ptsl_psl
-
-    r_psl_ps = nshock('p', Ms=Ms)
-
-    # state: e
-    r_Ae_Aestar = r_Ae_Asl * r_Asl_Aslstar
-    Me = isen('M', A=r_Ae_Aestar, regime='subsonic')
-    r_pe_pte = isen('p', M=Me)
-
-    r_pe_pc = r_pe_pte * r_pte_psl * r_psl_ps * r_ps_pc
+    # heat transfer
+    qes = (cp * (Tts - Tte)).to('kJ/kg')
 
     # ==========================================
     # log results
     # ==========================================
     configs = {}
-    configs['r_pe_pc'] = r_pe_pc
-    configs['Ms'] = Ms
     configs['Me'] = Me
 
     print(configs)
