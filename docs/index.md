@@ -1,1 +1,1 @@
-We're trying to get this to a GitHub page.
+We're trying to update the theme!
