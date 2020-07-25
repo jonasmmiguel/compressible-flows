@@ -2,8 +2,9 @@ from src.workbench import isentropic as isen, nshock, fanno, rayleigh
 import numpy as np
 import matplotlib.pyplot as plt; plt.style.use('ggplot')  # visualization
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from plotly.subplots import make_subplots  # multi-axes plots
 from matplotlib.colors import to_rgba
+import plotly.io as pio  # exporting plotly plots to HTML
 
 
 def set_rgba_color(css_code='MidnightBlue', alpha=0.8):
@@ -59,6 +60,9 @@ def plot_isentropic():
     # Configure layout
     fig.update_layout(legend={'x': 0.75, 'y': 0.95})
 
+    # save plot as HTML
+    pio.write_html(fig, file='isentropic.html', auto_open=False)
+
     fig.show()
 
 
@@ -109,6 +113,10 @@ def plot_nshock():
 
     # Configure layout
     fig.update_layout(legend={'x': 0.75, 'y': 0.95})
+
+    # save plot as HTML
+    pio.write_html(fig, file='nshock.html', auto_open=True, include_mathjax='cdn')
+
     fig.show()
 
 
@@ -168,6 +176,10 @@ def plot_fanno():
     fig.update_layout(yaxis_type="log",
                       legend={'x': 0.75, 'y': 0.95}
                       )
+
+    # save plot as HTML
+    pio.write_html(fig, file='fanno.html', auto_open=True)
+
     fig.show()
 
 
@@ -223,14 +235,18 @@ def plot_rayleigh():
 
     # Configure layout
     fig.update_layout(legend={'x': 0.75, 'y': 0.95})
+
+    # save plot as HTML
+    pio.write_html(fig, file='rayleigh.html', auto_open=True)
+
     fig.show()
 
 
 if __name__ == '__main__':
 
-    plot_isentropic()
+    # plot_isentropic()
     plot_nshock()
-    plot_fanno()
-    plot_rayleigh()
+    # plot_fanno()
+    # plot_rayleigh()
 
     print('ready!')
