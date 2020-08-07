@@ -27,10 +27,10 @@ Helpful tools for modeling steady, non-reacting, single-phase, 1D flows where Ma
   - any specific heat capacity and heat capacity ratio $(c_p, \gamma)$
   
 ## Extra: Interactive Visualization of Flow Functions ##
-- [Isentropic](https://chart-studio.plotly.com/~jonasmmiguel/49/#/)
-- [Normal Shock](https://chart-studio.plotly.com/~jonasmmiguel/51/#/)
-- [Fanno](https://chart-studio.plotly.com/~jonasmmiguel/49/#/)
-- [Rayleigh](https://chart-studio.plotly.com/~jonasmmiguel/55/#/)
+- [Isentropic](https://chart-studio.plotly.com/~jonasmmiguel/49)
+- [Normal Shock](https://chart-studio.plotly.com/~jonasmmiguel/51)
+- [Fanno](https://chart-studio.plotly.com/~jonasmmiguel/53)
+- [Rayleigh](https://chart-studio.plotly.com/~jonasmmiguel/55)
 
 
 
