@@ -16,7 +16,7 @@ Helpful tools for modeling steady, non-reacting, single-phase, 1D flows where Ma
 ## Validity domain ##
 
 - 1D flow modeling (gradients)
-- Steady (no temporal variation) or quasi-steady (succession of states each in thermodynamic equilibreium) regimes
+- Steady (no temporal variation) or quasi-steady (succession of states each in thermodynamic equilibrium) regimes
 - Any Mach number $M \in [0, +\infty[$
 - Negligible effects of 
   - chemical reactions
