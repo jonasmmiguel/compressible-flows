@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots  # multi-axes plots
 from matplotlib.colors import to_rgba
 import plotly.io as pio  # exporting plotly plots to HTML
+from chart_studio import tools as tls  # get iframe
+import chart_studio.plotly as py  # get URL
 
 
 def set_rgba_color(css_code='MidnightBlue', alpha=0.8):
@@ -61,9 +63,11 @@ def plot_isentropic():
     fig.update_layout(legend={'x': 0.75, 'y': 0.95})
 
     # save plot as HTML
-    pio.write_html(fig, file='isentropic.html', auto_open=False)
-
-    fig.show()
+    # pio.write_html(fig, file='isentropic.html', auto_open=False)
+    #
+    # host chart in Plotly Chart Studio
+    py.plot(fig, filename='isentropic', auto_open=True)
+    # fig.show()
 
 
 def plot_nshock():
@@ -115,9 +119,13 @@ def plot_nshock():
     fig.update_layout(legend={'x': 0.75, 'y': 0.95})
 
     # save plot as HTML
-    pio.write_html(fig, file='nshock.html', auto_open=True, include_mathjax='cdn')
+    # pio.write_html(fig, file='nshock.html', auto_open=True, include_mathjax='cdn')
 
-    fig.show()
+    # get iframe
+    # plot_url = py.plot(fig, filename='nshock.html')
+    # py.iplot(fig, filename='nshock.html', sharing='public')
+    py.plot(fig, filename='nshock', auto_open=True)
+    #fig.show()
 
 
 def plot_fanno():
@@ -178,9 +186,13 @@ def plot_fanno():
                       )
 
     # save plot as HTML
-    pio.write_html(fig, file='fanno.html', auto_open=True)
+    # pio.write_html(fig, file='fanno.html', auto_open=True)
 
-    fig.show()
+    # host chart in Plotly Chart Studio
+    # py.iplot(fig, filename='fanno.html', sharing='public')
+    py.plot(fig, filename='fanno', auto_open=True)
+
+    # fig.show()
 
 
 def plot_rayleigh():
@@ -237,16 +249,22 @@ def plot_rayleigh():
     fig.update_layout(legend={'x': 0.75, 'y': 0.95})
 
     # save plot as HTML
-    pio.write_html(fig, file='rayleigh.html', auto_open=True)
+    # pio.write_html(fig, file='rayleigh.html', auto_open=True)
 
-    fig.show()
+    # host chart in Plotly Chart Studio
+    # py.iplot(fig, filename='rayleigh.html', sharing='public')
+    py.plot(fig, filename='rayleigh', auto_open=True)
+    # fig.show()
+
+
+def plot_all():
+    plot_isentropic()
+    plot_nshock()
+    plot_fanno()
+    plot_rayleigh()
 
 
 if __name__ == '__main__':
 
-    # plot_isentropic()
-    plot_nshock()
-    # plot_fanno()
-    # plot_rayleigh()
 
     print('ready!')
