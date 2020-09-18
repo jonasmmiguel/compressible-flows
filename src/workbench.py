@@ -202,3 +202,113 @@ if __name__ == '__main__':
     Ms_ray1 = rayleigh('M', T=0.6, regime='subsonic')
     Ms_ray2 = rayleigh('M', T=0.6, regime='supersonic')
     print('done')
+
+
+def BWR(Tr, vrl, b1, b2, b3, b4, c1, c2, c3, c4, d1, d2, beta, gamma):
+    """
+    Calculate Z via the Benedict-Webb-Rubin Equation
+
+    :param vrl:
+    :param Tr:
+    :param b1:
+    :param b2:
+    :param b3:
+    :param b4:
+    :param c1:
+    :param c2:
+    :param c3:
+    :param c4:
+    :param d1:
+    :param d2:
+    :param beta:
+    :param gamma:
+    :return: Z: compressibility factor
+    """
+    B = b1 - (b2 / Tr) - (b3 / Tr ** 2) - (b4 / Tr ** 3)
+    C = c1 - (c2 / Tr) + (c3 / Tr ** 3)
+    D = d1 + (d2 / Tr)
+    tail_term = (c4 / (Tr ** 3 * vrl ** 2)) * (beta + gamma / vrl ** 2) * np.exp(-gamma / vrl ** 2)
+
+    Z = 1 + (B / vrl) + (C / vrl ** 2) + (D / vrl ** 5) + tail_term
+    return Z
+
+
+def acentric_factor(fluid):
+    Tc, pc = fluid.critical()
+    pref = fluid.ps( 0.7 * Tc )
+    pref_r = pref / pc
+    omega = - np.log(pref_r) / np.log(10) - 1
+    return omega
+
+
+def leekesler(Tr: float, vrl: float, omega=0.0) -> float:
+    """
+    Coefficients according to
+    Plocker, U., Knapp, H., & Prausnitz, J. (1978). Calculation of high-pressure vapor-liquid equilibria from a corresponding-states correlation with emphasis on asymmetric mixtures. Industrial & Engineering Chemistry Process Design and Development, 17(3), 324-332.
+    p. 331
+    Table A-I
+    """
+    # simple fluid
+    bwr_simplefluid_coeffs = {
+        'b1': 0.1181193,
+        'b2': 0.265728,
+        'b3': 0.154790,
+        'b4': 0.030323,
+        'c1': 0.0236744,
+        'c2': 0.0186984,
+        'c3': 0.0,
+        'c4': 0.042724,
+        'd1': 0.155428E-04,  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed)
+        'd2': 0.623689E-04,
+        'beta': 0.65392,
+        'gamma': 0.060167
+    }
+
+    # reference fluid
+    omega_ref = 0.3978
+    bwr_reffluid_coeffs = {
+        'b1': 0.2026579,
+        'b2': 0.331511,
+        'b3': 0.027655,
+        'b4': 0.203488,
+        'c1': 0.0313385,
+        'c2': 0.0503618,
+        'c3': 0.016901,
+        'c4': 0.041577,
+        'd1': 0.48736E-04,
+        'd2': 0.0740336E-04,
+        'beta': 1.226,
+        'gamma': 0.03754
+    }
+
+    bwe_inputs_simple = bwr_simplefluid_coeffs
+    bwe_inputs_simple['Tr'] = Tr
+    bwe_inputs_simple['vrl'] = vrl
+
+    bwe_inputs_ref = bwr_reffluid_coeffs
+    bwe_inputs_ref['Tr'] = Tr
+    bwe_inputs_ref['vrl'] = vrl
+
+
+    Z0 = BWR(**bwe_inputs_simple)
+    Zref = BWR(**bwe_inputs_ref)
+
+    Z = Z0 + (omega / omega_ref) * (Zref - Z0)
+
+    return Z
+
+
+def get_Z(pr: float, Tr: float) -> float:
+    loss = lambda vrl, Tr: (((pr * vrl) / Tr) - leekesler(Tr=Tr, vrl=vrl)) ** 2
+
+    vrl = minimize_scalar(fun=loss,
+                            args=(Tr),
+                            method='bounded',  # bounded Brent optimizer
+                            bounds=[0, 25],
+                            options={'xatol': 1E-08,
+                                     'maxiter': 1500,
+                                     'disp': True, }
+                            )['x']
+
+    Z = leekesler(Tr=Tr, vrl=vrl)
+    return Z

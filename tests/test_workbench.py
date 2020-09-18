@@ -1663,4 +1663,12 @@ def test_rayleigh(k, M, Tt_ratio, T_ratio, p_ratio, pt_ratio, v_ratio, Smax_to_R
         assert wb.rayleigh('M', pt=pt_ratio, k=k, regime='supersonic') == pytest.approx(M, abs=EPS_M)
 
 
+@pytest.mark.parametrize('pr, Tr, Z',
+                         [
+                             (1.0, 1.0, 0.2901),
+                         ])
+def test_get_Z(pr, Tr, Z):
+    assert wb.get_Z(pr=pr, Tr=Tr) == pytest.approx(Z, abs=1E-03)
+
+
 
