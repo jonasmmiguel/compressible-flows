@@ -1671,4 +1671,18 @@ def test_get_Z(pr, Tr, Z):
     assert wb.get_Z(pr=pr, Tr=Tr) == pytest.approx(Z, abs=1E-03)
 
 
+@pytest.mark.parametrize('pr, Tr, hdep',
+                         [
+                             (0.53, 0.90, 0.90),
+                             (1.00, 0.85, 4.30),
+                             (1.00, 0.80, 4.50),
+                             (1.00, 1.50, 0.50),
+                             (0.63, 1.20, 0.50),
+                             (1.00, 2.00, 0.25),
+                         ])
+def test_hdep(pr, Tr, hdep):
+    assert wb.hdep(pr=pr, Tr=Tr) == pytest.approx(hdep, abs=1E-06)
+
+
+
 

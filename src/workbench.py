@@ -244,9 +244,10 @@ def acentric_factor(fluid):
 def leekesler(Tr: float, vrl: float, omega=0.0) -> float:
     """
     Coefficients according to
-    Plocker, U., Knapp, H., & Prausnitz, J. (1978). Calculation of high-pressure vapor-liquid equilibria from a corresponding-states correlation with emphasis on asymmetric mixtures. Industrial & Engineering Chemistry Process Design and Development, 17(3), 324-332.
-    p. 331
-    Table A-I
+    A Generalized Thermodynamic Correlation Based on Three-Parameter Corresponding States
+    Lee & Kesler 1975
+    p. 511
+    Table I
     """
     # simple fluid
     bwr_simplefluid_coeffs = {
@@ -258,7 +259,7 @@ def leekesler(Tr: float, vrl: float, omega=0.0) -> float:
         'c2': 0.0186984,
         'c3': 0.0,
         'c4': 0.042724,
-        'd1': 0.155428E-04,  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed)
+        'd1': 0.155488E-04,  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed / Lee-Kesler 1975)
         'd2': 0.623689E-04,
         'beta': 0.65392,
         'gamma': 0.060167
@@ -299,6 +300,13 @@ def leekesler(Tr: float, vrl: float, omega=0.0) -> float:
 
 
 def get_Z(pr: float, Tr: float) -> float:
+
+    if type(pr) != float:
+        pr = pr.magnitude
+
+    if type(Tr) != float:
+        Tr = Tr.magnitude
+
     loss = lambda vrl, Tr: (((pr * vrl) / Tr) - leekesler(Tr=Tr, vrl=vrl)) ** 2
 
     vrl = minimize_scalar(fun=loss,
@@ -312,3 +320,42 @@ def get_Z(pr: float, Tr: float) -> float:
 
     Z = leekesler(Tr=Tr, vrl=vrl)
     return Z
+
+
+def hdep(pr: float, Tr: float, omega: float = 0, **coeffs) -> float:
+    """
+    Coefficients according to
+    A Generalized Thermodynamic Correlation Based on Three-Parameter Corresponding States
+    Lee & Kesler 1975
+    p. 511
+    Table I
+    """
+    # simple fluid
+    b1= 0.1181193
+    b2= 0.265728
+    b3= 0.154790
+    b4= 0.030323
+    c1= 0.0236744
+    c2= 0.0186984
+    c3= 0.0
+    c4= 0.042724
+    d1= 0.155488E-04  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed / Lee-Kesler 1975)
+    d2= 0.623689E-04
+    beta= 0.65392
+    gamma= 0.060167
+
+    Z = get_Z(pr, Tr)
+    vr = Tr * Z / pr
+
+    term1 = (b2 + 2 * b3 / Tr + 3 * b4 / Tr **2) / (Tr * vr)
+    term2 = (c2 - 3 * c3 / Tr ** 2)
+    term3 = d2 / (5 * Tr * vr ** 5)
+    term4 = (3 * c4 / (2 * Tr ** 3 * gamma)) * (beta + 1 - (beta + 1 + gamma / vr ** 2) * np.exp(-gamma / vr ** 2))
+    hdep = -Tr * (Z - 1 - term1 - term2 + term3 + term4)
+    return hdep
+
+
+# def sdep(pr: float, Tr: float, pc: float, omega: float = 0, **coeffs) -> float:
+#
+#     sdep = -np.log(p / (1 * unit('atm'))
+#     return sdep
