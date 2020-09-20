@@ -19,7 +19,7 @@ Helpful tools for modeling steady, non-reacting, single-phase, 1D flows where Ma
 - Steady (no temporal variation) or quasi-steady (succession of states each in thermodynamic equilibrium) regimes
 - Any Mach number $M \in [0, +\infty[$
 - Negligible effects of 
-  - chemical reactions
+  - chemical reactions (including ionization, typical for $M>5$)
   - phase changes
   - gravitational potential changes
 - Medium
