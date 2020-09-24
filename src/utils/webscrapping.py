@@ -43,7 +43,7 @@ def is_good_response(resp):
             and content_type.find('html') > -1)
 
 
-def get_phase_change_html_table(Name):
+def get_phase_change_html_table(Name: str) -> object:
 
     """ Return the html already parsed using the a helper function listed below.
 
@@ -72,7 +72,7 @@ def get_phase_change_html_table(Name):
     return table
 
 
-def get_row_props(row) -> dict:
+def get_row_props(row: object) -> dict:
     cols = row.find_all('td')
 
     qty = cols[0].text
@@ -111,3 +111,12 @@ def get_phase_change_data(Name: str) -> dict:
             props[qty] = row_data
 
     return props
+
+
+def get_crit_state(Name: str, ureg: object) -> list:
+    phase_change_data = get_phase_change_data(Name)
+
+    Tc = phase_change_data['Tc']['value'] * ureg(phase_change_data['Tc']['unit'])
+    pc = phase_change_data['Pc']['value'] * ureg(phase_change_data['Pc']['unit'])
+
+    return Tc, pc
