@@ -1,7 +1,7 @@
 # Author: Jonas M. Miguel (jonasmmiguel@gmail.com)
 
 import numpy as np
-from scipy.optimize import minimize, minimize_scalar, brute  # optimization algorithms
+from scipy.optimize import root, minimize_scalar
 
 
 def get_k(input):
@@ -204,11 +204,11 @@ if __name__ == '__main__':
     print('done')
 
 
-def BWR(Tr, vrl, b1, b2, b3, b4, c1, c2, c3, c4, d1, d2, beta, gamma):
+def BWR(Tr, vr, b1, b2, b3, b4, c1, c2, c3, c4, d1, d2, beta, gamma):
     """
     Calculate Z via the Benedict-Webb-Rubin Equation
 
-    :param vrl:
+    :param vr:
     :param Tr:
     :param b1:
     :param b2:
@@ -227,9 +227,13 @@ def BWR(Tr, vrl, b1, b2, b3, b4, c1, c2, c3, c4, d1, d2, beta, gamma):
     B = b1 - (b2 / Tr) - (b3 / Tr ** 2) - (b4 / Tr ** 3)
     C = c1 - (c2 / Tr) + (c3 / Tr ** 3)
     D = d1 + (d2 / Tr)
-    tail_term = (c4 / (Tr ** 3 * vrl ** 2)) * (beta + gamma / vrl ** 2) * np.exp(-gamma / vrl ** 2)
 
-    Z = 1 + (B / vrl) + (C / vrl ** 2) + (D / vrl ** 5) + tail_term
+    if abs(vr) < 1e-08:
+        vr = 1e-08
+
+    tail_term = (c4 / (Tr ** 3 * vr ** 2)) * (beta + gamma / vr ** 2) * np.exp(-gamma / vr ** 2)
+
+    Z = 1 + (B / vr) + (C / vr ** 2) + (D / vr ** 5) + tail_term
     return Z
 
 
@@ -241,7 +245,7 @@ def acentric_factor(fluid):
     return omega
 
 
-def leekesler(Tr: float, vrl: float, omega=0.0) -> float:
+def leekesler(Tr: float, vr: float, omega=0.0) -> float:
     """
     Coefficients according to
     A Generalized Thermodynamic Correlation Based on Three-Parameter Corresponding States
@@ -284,41 +288,66 @@ def leekesler(Tr: float, vrl: float, omega=0.0) -> float:
 
     bwe_inputs_simple = bwr_simplefluid_coeffs
     bwe_inputs_simple['Tr'] = Tr
-    bwe_inputs_simple['vrl'] = vrl
+    bwe_inputs_simple['vr'] = vr
 
     bwe_inputs_ref = bwr_reffluid_coeffs
     bwe_inputs_ref['Tr'] = Tr
-    bwe_inputs_ref['vrl'] = vrl
+    bwe_inputs_ref['vr'] = vr
 
 
     Z0 = BWR(**bwe_inputs_simple)
-    Zref = BWR(**bwe_inputs_ref)
 
-    Z = Z0 + (omega / omega_ref) * (Zref - Z0)
+    if omega != 0:
+        Zref = BWR(**bwe_inputs_ref)
+        Z = Z0 + (omega / omega_ref) * (Zref - Z0)
+    else:
+        Z = Z0
 
+    # if Z < 0:
+    #     Z = 1
     return Z
+
+
+def _fun(vr, Tr, pr):
+    return (pr * vr) / Tr - leekesler(Tr=Tr, vr=vr)
+
+
+def _loss(vr, Tr, pr):
+    (((pr * vr) / Tr) - leekesler(Tr=Tr, vr=vr)) ** 2
 
 
 def get_Z(pr: float, Tr: float) -> float:
 
-    if type(pr) != float:
+    if type(pr) not in [float, int]:
         pr = pr.magnitude
 
-    if type(Tr) != float:
+    if type(Tr) not in [float, int]:
         Tr = Tr.magnitude
 
-    loss = lambda vrl, Tr: (((pr * vrl) / Tr) - leekesler(Tr=Tr, vrl=vrl)) ** 2
+    if pr > 1:
+        x0 = [0.05]
 
-    vrl = minimize_scalar(fun=loss,
-                            args=(Tr),
-                            method='bounded',  # bounded Brent optimizer
-                            bounds=[0, 25],
-                            options={'xatol': 1E-08,
-                                     'maxiter': 1500,
-                                     'disp': True, }
-                            )['x']
+        vr = root(fun=_fun,
+                  args=(Tr, pr),
+                  x0=x0,
+                  method='df-sane',
+                  options={
+                      'xatol': 1E-08,
+                      'maxiter': 1500,
+                      'disp': True,
+                  })['x'][0]
+    else:
+        loss = lambda vr, Tr: (((pr * vr) / Tr) - leekesler(Tr=Tr, vr=vr)) ** 2
+        vr = minimize_scalar(fun=loss,
+                             args=(Tr),
+                             method='bounded',  # bounded Brent optimizer
+                             bounds=[0.2901, 1E+08],
+                             options={'xatol': 1E-08,
+                                      'maxiter': 1500,
+                                      'disp': True, }
+                             )['x']
 
-    Z = leekesler(Tr=Tr, vrl=vrl)
+    Z = leekesler(Tr=Tr, vr=vr)
     return Z
 
 
@@ -331,21 +360,21 @@ def hdep(pr: float, Tr: float, omega: float = 0, **coeffs) -> float:
     Table I
     """
     # simple fluid
-    b1= 0.1181193
-    b2= 0.265728
-    b3= 0.154790
-    b4= 0.030323
-    c1= 0.0236744
-    c2= 0.0186984
-    c3= 0.0
-    c4= 0.042724
-    d1= 0.155488E-04  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed / Lee-Kesler 1975)
-    d2= 0.623689E-04
-    beta= 0.65392
-    gamma= 0.060167
+    b1 = 0.1181193
+    b2 = 0.265728
+    b3 = 0.154790
+    b4 = 0.030323
+    c1 = 0.0236744
+    c2 = 0.0186984
+    c3 = 0.0
+    c4 = 0.042724
+    d1 = 0.155488E-04  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed / Lee-Kesler 1975)
+    d2 = 0.623689E-04
+    beta = 0.65392
+    gamma = 0.060167
 
     Z = get_Z(pr, Tr)
-    vr = Tr * Z / pr
+    vr = Z * Tr / pr
 
     term1 = (b2 + 2 * b3 / Tr + 3 * b4 / Tr **2) / (Tr * vr)
     term2 = (c2 - 3 * c3 / Tr ** 2)
@@ -355,7 +384,37 @@ def hdep(pr: float, Tr: float, omega: float = 0, **coeffs) -> float:
     return hdep
 
 
-# def sdep(pr: float, Tr: float, pc: float, omega: float = 0, **coeffs) -> float:
-#
-#     sdep = -np.log(p / (1 * unit('atm'))
-#     return sdep
+def sdep(pr: float, Tr: float, pc_atm: float, omega: float = 0, **coeffs) -> float:
+    """
+    Coefficients according to
+    A Generalized Thermodynamic Correlation Based on Three-Parameter Corresponding States
+    Lee & Kesler 1975
+    p. 511
+    Table I
+    """
+    # simple fluid
+    b1 = 0.1181193
+    b2 = 0.265728
+    b3 = 0.154790
+    b4 = 0.030323
+    c1 = 0.0236744
+    c2 = 0.0186984
+    c3 = 0.0
+    c4 = 0.042724
+    d1 = 0.155428E-04  # 'd1': 0.155428E-04 (1978) OR 0.155488E-04 (VanWylen 8ed / Lee-Kesler 1975)
+    d2 = 0.623689E-04
+    beta = 0.65392
+    gamma = 0.060167
+
+    p = pr * pc_atm
+
+    Z = get_Z(pr, Tr)
+    vr = Z * Tr / pr
+
+    term1 = (b1 + b3/Tr**2 + 2*b4/Tr**3) / vr
+    term2 = (c1 - 2*c3/Tr**3)/(2*vr**2)
+    term3 = d1 / (5*vr**5)
+    term4 = (2 * c4 / (2 * Tr ** 3 * gamma)) * (beta + 1 - (beta + 1 + gamma / vr ** 2) * np.exp(-gamma / vr ** 2))
+
+    sdep = -np.log(p / 1) + np.log(Z) - term1 - term2 - term3 - term4
+    return sdep
