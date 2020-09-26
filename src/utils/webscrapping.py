@@ -113,8 +113,8 @@ def get_phase_change_data(Name: str) -> dict:
     return props
 
 
-def get_crit_state(Name: str, ureg: object) -> list:
-    phase_change_data = get_phase_change_data(Name)
+def get_crit_state(name: str, ureg: object) -> list:
+    phase_change_data = get_phase_change_data(name)
 
     Tc = phase_change_data['Tc']['value'] * ureg(phase_change_data['Tc']['unit'])
     pc = phase_change_data['Pc']['value'] * ureg(phase_change_data['Pc']['unit'])
