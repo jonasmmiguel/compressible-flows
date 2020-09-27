@@ -609,11 +609,11 @@ EPS = 1E-05
                                  (10, 4.0, 1.1773),
                          ])
 def test_get_Z(pr, Tr, Z):
-    Z_ist = lk.get_Z(pr=pr, Tr=Tr)
-
-    if Z_ist == 'E':
-        pytest.skip('pr Tr region not handled yet')
-    assert Z_ist == pytest.approx(Z, abs=1E-03)
+    if pr<1 and Tr<1:
+        pytest.skip('pr Tr undercritical region')
+    else:
+        Z_ist = lk.get_Z(pr=pr, Tr=Tr)
+        assert Z_ist == pytest.approx(Z, abs=1E-03)
 
 
 @pytest.mark.parametrize('pr, Tr, hdep',
