@@ -162,12 +162,18 @@ def find_vr_via_root(pr: float, Tr: float, vr0: float):
     return vr
 
 
+def Z_residual(Z: float, Tr: float, pr: float) -> float:
+    vr = Z * Tr / pr
+    residual = Z - leekesler(Tr, vr)
+    return residual
+
+
 def get_Z(pr: float, Tr: float) -> float:
     Tr, pr = validate_Tr_pr(Tr, pr)
 
     is_phasechange_possible = (Tr < 1.2) and (pr < 1)
     is_danger_zone = (Tr < 1.2) or (pr < 1)
-    vr0 = 0.05
+    Z_guess = 1.0
     polishing_optimizer = fmin
 
     if not is_danger_zone:
@@ -179,9 +185,19 @@ def get_Z(pr: float, Tr: float) -> float:
     else:
         Z, is_saturation_implausible = get_ambiguous_Z(Tr, pr)
         if is_saturation_implausible:
-            vr = find_vr_via_brute(pr=pr, Tr=Tr, polishing_optimizer=polishing_optimizer)
+            vr = find_vr_via_brute(pr=pr, Tr=Tr, polishing_optimizer=None)
             Z = pr * vr / Tr
     return Z
+
+
+def pr_sat(Tr: float, omega: float = 0) -> float:
+    """
+    Eq. 17, p. 525 Lee & Kesler 1975 paper
+    """
+    return np.exp(
+        5.92714 - 6.09648/Tr - 1.28862 * np.log(Tr) + 0.169347 * Tr ** 6
+        + omega * (15.2518 - 15.6875/Tr - 13.4721 * np.log(Tr) + 0.43577 * Tr ** 6)
+    )
 
 
 def get_delta_e(e):
