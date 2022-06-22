@@ -40,7 +40,7 @@ meld==3.20.2
 monotonic==1.5
 more-itertools==8.4.0
 netifaces==0.10.4
-numpy==1.17.4
+numpy==1.22.0
 numpy-financial==1.0.0
 oauthlib==3.1.0
 olefile==0.46
