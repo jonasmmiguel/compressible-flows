@@ -48,7 +48,7 @@ packaging==20.4
 pandas==1.0.5
 paramiko==2.6.0
 pexpect==4.6.0
-Pillow==7.1.0
+Pillow==9.0.1
 Pint==0.14
 Pint-Pandas==0.1
 plotly==4.9.0
