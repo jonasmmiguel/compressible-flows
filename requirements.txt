@@ -46,7 +46,7 @@ oauthlib==3.1.0
 olefile==0.46
 packaging==20.4
 pandas==1.0.5
-paramiko==2.6.0
+paramiko==3.4.0
 pexpect==4.6.0
 Pillow==9.0.1
 Pint==0.14
